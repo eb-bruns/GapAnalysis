@@ -100,6 +100,8 @@ FCSex <- function(Species_list, Occurrence_data, Raster_list, Buffer_distance=50
                     Buffer_distance = Buffer_distance,
                     Gap_Map = Gap_Map)
   # call ERSex
+    #EBB: source edits...
+  source("/Users/emily/Documents/GitHub/GapAnalysis/R/ERSex.R")
   ERSex_df <- ERSex(Species_list = Species_list,
                     Occurrence_data = Occurrence_data,
                     Raster_list = Raster_list,

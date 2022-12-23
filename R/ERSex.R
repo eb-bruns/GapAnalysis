@@ -53,6 +53,7 @@
 #' @importFrom sf st_as_sf
 
 
+
 ERSex <- function(Species_list,Occurrence_data, Raster_list, Buffer_distance=50000,Ecoregions_shp=NULL,Gap_Map=FALSE){
 
   taxon <- NULL
@@ -114,10 +115,10 @@ ERSex <- function(Species_list,Occurrence_data, Raster_list, Buffer_distance=500
 
   # loop through all species calculate ERSex and produce map
   for(i in seq_len(length(Species_list))){
-
+#i<-1
     speciesOcc <- Occurrence_data[which(Occurrence_data$species==Species_list[i]),]
-    
-    if(length(speciesOcc$type == "G") == 0){
+
+    if(nrow(speciesOcc[which(speciesOcc$type == "G"),]) == 0){
       df$species[i] <- Species_list[i]
       df$ERSex[i] <- 0
     }else{
@@ -125,9 +126,11 @@ ERSex <- function(Species_list,Occurrence_data, Raster_list, Buffer_distance=500
       OccDataG <- speciesOcc
       OccDataG <- speciesOcc[which(speciesOcc$type=="G"),c("longitude","latitude")]
 
-
       OccDataG <- OccDataG[which(!is.na(OccDataG$latitude) & !is.na(OccDataG$longitude)),]
 
+      # EBB: make sure lat and long are numeric
+      #OccDataG$latitude <- as.numeric(OccDataG$latitude)
+      #OccDataG$longitude <- as.numeric(OccDataG$longitude)
 
       # # select raster with species name
       for(j in seq_len(length(Raster_list))){
@@ -137,7 +140,7 @@ ERSex <- function(Species_list,Occurrence_data, Raster_list, Buffer_distance=500
         d1 <- Occurrence_data[Occurrence_data$species == Species_list[i],]
         test <- GapAnalysis::ParamTest(d1, sdm)
         if(isTRUE(test[1])){
-          stop(paste0("No Occurrence data exists, but and SDM was provide. Please check your occurrence data input for ", Species_list[i]))
+          stop(paste0("No Occurrence data exists, but an SDM was provided. Please check your occurrence data input for ", Species_list[i]))
         }
 
       };rm(j)
@@ -148,7 +151,6 @@ ERSex <- function(Species_list,Occurrence_data, Raster_list, Buffer_distance=500
         warning(paste0("Either no occurrence data or SDM was found for species ", as.character(Species_list[i]),
                        " the conservation metric was automatically assigned 0"))
       } else {
-
 
         #sp::coordinates(OccDataG) <- ~longitude+latitude
 
@@ -174,7 +176,13 @@ ERSex <- function(Species_list,Occurrence_data, Raster_list, Buffer_distance=500
         names(buffer_list[[i]]) <- Species_list[i]
         gPoints <- sp::SpatialPoints(raster::rasterToPoints(buffer_rs))
         # extract values from ecoregions to points
-        suppressWarnings(raster::crs(gPoints) <- raster::crs(raster::projection(Ecoregions_shp)))
+        #suppressWarnings(raster::crs(gPoints) <- raster::crs(raster::projection(Ecoregions_shp)))
+          #EBB: hardcoding this for now because the projection of the
+          # ecoregions is the deprecated proj.4 representation;
+          # above line throws this error:
+          # Error in sp::CRS(...) : Cannot revertBOUNDCRS[SOURCECRS[GEOGCRS["unknown".......
+        raster::crs(gPoints) <- "EPSG:4326"
+        raster::crs(Ecoregions_shp) <- "EPSG:4326"
 
         ecoValsG <- suppressWarnings(sp::over(x = gPoints, y = Ecoregions_shp))
         ecoValsG <- data.frame(ECO_ID_U=(unique(ecoValsG$ECO_ID_U)))
@@ -201,7 +209,8 @@ ERSex <- function(Species_list,Occurrence_data, Raster_list, Buffer_distance=500
           # select all ecoregions present in ecoVal(all points) but absent in ecoValG(g buffers)
           ecoGap <- ecoVals[!ecoVals %in% ecoValsG]
           if(length(ecoGap) == 0){
-            GapMapEx_list[[i]] <- paste0("All ecoregions within the model are within ", Buffer_distance,
+            GapMapEx_list[[i]] <- paste0("All ecoregions within the model are within ",
+                                         (Buffer_distance/1000),
                                          "km of G occurrence. There are no gaps")
 
           }else{
