@@ -49,7 +49,11 @@
 #' @export
 
 
-FCSex <- function(Species_list, Occurrence_data, Raster_list, Buffer_distance=50000,Ecoregions_shp=NULL,Gap_Map=FALSE){
+FCSex <- function(Species_list, Occurrence_data, Raster_list,
+                  Buffer_distance=50000, Ecoregions_shp=NULL, Gap_Map=FALSE,
+                  #EBB: adding option for separate dataset and filtering
+                  #     column for SRS calculation
+                  Occurrence_data_raw=Occurrence_data, Select_database="GBIF"){
 
   SRSex_df <- NULL
   GRSex_df <- NULL
@@ -91,14 +95,26 @@ FCSex <- function(Species_list, Occurrence_data, Raster_list, Buffer_distance=50
 
 
   # call SRSex
+    #EBB: if raw dataset is provided, filter points to only one database,
+    #     to avoid many duplicates
+  par_names_raw <- c("species","latitude","longitude","type","database")
+  if(isFALSE(identical(names(Occurrence_data_raw),par_names_raw))){
+    print("If you'd like to use a different occurrence point dataframe for the SRSex calculation, pass it into the Occurrence_data_raw variable and format as species, latitude, longitude, type, database")
+  } else {
+    print(paste0("For the SRSex calculation, filtering raw points to include those from ",Select_database," only. If you'd like to filter by a different database, pass it into the Select_database variable"))
+    Occurrence_data_raw <- Occurrence_data_raw %>%
+      filter(database == Select_database | database == "Ex_situ") %>%
+      select(-database)
+  }
   SRSex_df <- SRSex(Species_list = Species_list,
-                    Occurrence_data = Occurrence_data)
+                    Occurrence_data = Occurrence_data_raw)
   # call GRSex
   GRSex_df <- GRSex(Occurrence_data = Occurrence_data,
                     Species_list = Species_list,
                     Raster_list = Raster_list,
                     Buffer_distance = Buffer_distance,
                     Gap_Map = Gap_Map)
+
   # call ERSex
     #EBB: source edits...
   source("/Users/emily/Documents/GitHub/GapAnalysis/R/ERSex.R")

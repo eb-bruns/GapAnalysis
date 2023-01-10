@@ -51,7 +51,14 @@
 
 #' @importFrom raster overlay crop raster extent
 
-FCSin <- function(Species_list, Occurrence_data, Raster_list,Ecoregions_shp=NULL,Pro_areas=NULL,Gap_Map=FALSE) {
+FCSin <- function(Species_list, Occurrence_data, Raster_list,
+                  # using rasterized buffers instead of SDM for SRS calc
+                  Rasterized_buffers_list,
+                  Ecoregions_shp=NULL, Pro_areas=NULL, Gap_Map=FALSE,
+                  #EBB: adding option for separate dataset and filtering
+                  #     column for SRS calculation
+                  Occurrence_data_raw=Occurrence_data, Select_database="GBIF"){
+
   SRSin_df <- NULL
   GRSin_df <- NULL
   ERSin_df <- NULL
@@ -105,24 +112,39 @@ FCSin <- function(Species_list, Occurrence_data, Raster_list,Ecoregions_shp=NULL
 
 
   # call SRSin
+  #EBB: if raw dataset is provided, filter points to only one database,
+  #     to avoid many duplicates
+  par_names_raw <- c("species","latitude","longitude","type","database")
+  if(isFALSE(identical(names(Occurrence_data_raw),par_names_raw))){
+    print("If you'd like to use a different occurrence point dataframe for the SRSin calculation, pass it into the Occurrence_data_raw variable and format as species, latitude, longitude, type, database")
+  } else {
+    print(paste0("For the SRSin calculation, filtering raw points to include those from ",Select_database," only. If you'd like to filter by a different database, pass it into the Select_database variable"))
+    Occurrence_data_raw <- Occurrence_data_raw %>%
+      filter(database == Select_database | database == "Ex_situ") %>%
+      select(-database)
+  }
   SRSin_df <- SRSin(Species_list = Species_list,
-                                 Occurrence_data = Occurrence_data,
-                                 Raster_list = Raster_list,
-                                 Pro_areas=Pro_areas,
-                                 Gap_Map = Gap_Map)
+                    Occurrence_data = Occurrence_data_raw,
+                    # EBB: there are occurrences outside the SDM, so it doesn't
+                    #      make sense to crop the protected areas by the SDM...?
+                    #      updating to use buffers around the occurrence points
+                    #      instead of the SDM...
+                    Raster_list = Rasterized_buffers_list,
+                    Pro_areas=Pro_areas,
+                    Gap_Map = Gap_Map)
 
   GRSin_df <- GRSin(Species_list = Species_list,
-                                 Occurrence_data = Occurrence_data,
-                                 Raster_list = Raster_list,
-                                 Pro_areas=Pro_areas,
-                                 Gap_Map = Gap_Map)
+                    Occurrence_data = Occurrence_data,
+                    Raster_list = Raster_list,
+                    Pro_areas=Pro_areas,
+                    Gap_Map = Gap_Map)
 
   ERSin_df <- ERSin(Species_list = Species_list,
-                                 Occurrence_data =Occurrence_data,
-                                 Raster_list = Raster_list,
-                                 Pro_areas=Pro_areas,
-                                 Ecoregions_shp=Ecoregions_shp,
-                                 Gap_Map = Gap_Map)
+                    Occurrence_data =Occurrence_data,
+                    Raster_list = Raster_list,
+                    Pro_areas=Pro_areas,
+                    Ecoregions_shp=Ecoregions_shp,
+                    Gap_Map = Gap_Map)
 
 
   if(isFALSE(Gap_Map) | is.null(Gap_Map)){

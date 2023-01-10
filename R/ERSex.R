@@ -54,7 +54,8 @@
 
 
 
-ERSex <- function(Species_list,Occurrence_data, Raster_list, Buffer_distance=50000,Ecoregions_shp=NULL,Gap_Map=FALSE){
+ERSex <- function(Species_list, Occurrence_data, Raster_list,
+                  Buffer_distance=50000, Ecoregions_shp=NULL, Gap_Map=FALSE){
 
   taxon <- NULL
   type <- NULL
@@ -159,6 +160,7 @@ ERSex <- function(Species_list,Occurrence_data, Raster_list, Buffer_distance=500
           warning("No coordinate system was provided, assuming  +proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0","\n")
           raster::projection(sdm) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
         }
+
         # suppressWarnings(sp::proj4string(OccDataG) <- sp::CRS(raster::projection(sdm)))
         # convert SDM from binary to 1-NA for mask and area
         SdmMask <- sdm
