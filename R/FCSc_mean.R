@@ -70,9 +70,9 @@ FCSc_mean <- function(FCSex_df, FCSin_df) {
     FCSin_df  <- FCSin_df
   }
   #join datasets and select necessary Columns
-  df <- merge(FCSex_df, FCSin_df, by ="species",all.x=TRUE)
+  df <- merge(FCSex_df, FCSin_df, by ="Taxon",all.x=TRUE)
   #df <- dplyr::left_join(x = FCSex_df, y = FCSin_df, by = "species")
-  df <-  df[,c("species", "FCSex","FCSex_class", "FCSin", "FCSin_class")]
+  df <-  df[,c("Taxon", "FCSex","FCSex_class", "FCSin", "FCSin_class")]
 
   for(i in seq_len(nrow(df))){
     #compute FCS_min and FCS_min
@@ -83,19 +83,19 @@ FCSc_mean <- function(FCSex_df, FCSin_df) {
 
 
   #assign classes (min)
-  df$FCS_min_class <- with(df, ifelse(FCS_min < 25, "HP",
-                                                ifelse(FCS_min >= 25 & FCS_min < 50, "MP",
-                                                       ifelse(FCS_min >= 50 & FCS_min < 75, "LP",
-                                                              "SC"))))
+  df$FCS_min_class <- with(df, ifelse(FCS_min < 25, "UP",
+                                                ifelse(FCS_min >= 25 & FCS_min < 50, "HP",
+                                                       ifelse(FCS_min >= 50 & FCS_min < 75, "MP",
+                                                              "LP"))))
   #assign classes (max)
-  df$FCS_max_class <- with(df, ifelse(FCS_max < 25, "HP",
-                                      ifelse(FCS_max >= 25 & FCS_max < 50, "MP",
-                                             ifelse(FCS_max >= 50 & FCS_max < 75, "LP",
-                                                    "SC"))))
-  df$FCSc_mean_class <- with(df, ifelse(FCSc_mean < 25, "HP",
-                                      ifelse(FCSc_mean >= 25 & FCSc_mean < 50, "MP",
-                                             ifelse(FCSc_mean >= 50 & FCSc_mean < 75, "LP",
-                                                    "SC"))))
+  df$FCS_max_class <- with(df, ifelse(FCS_max < 25, "UP",
+                                      ifelse(FCS_max >= 25 & FCS_max < 50, "HP",
+                                             ifelse(FCS_max >= 50 & FCS_max < 75, "MP",
+                                                    "LP"))))
+  df$FCSc_mean_class <- with(df, ifelse(FCSc_mean < 25, "UP",
+                                      ifelse(FCSc_mean >= 25 & FCSc_mean < 50, "HP",
+                                             ifelse(FCSc_mean >= 50 & FCSc_mean < 75, "MP",
+                                                    "LC"))))
 
 
   return(df)

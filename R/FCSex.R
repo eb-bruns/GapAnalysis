@@ -53,7 +53,9 @@ FCSex <- function(Species_list, Occurrence_data, Raster_list,
                   Buffer_distance=50000, Ecoregions_shp=NULL, Gap_Map=FALSE,
                   #EBB: adding option for separate dataset and filtering
                   #     column for SRS calculation
-                  Occurrence_data_raw=Occurrence_data, Select_database="GBIF"){
+                  Occurrence_data_raw=Occurrence_data
+                  #,Select_database="GBIF"
+                  ){
 
   SRSex_df <- NULL
   GRSex_df <- NULL
@@ -67,7 +69,7 @@ FCSex <- function(Species_list, Occurrence_data, Raster_list,
     stop("Please add a valid data frame with columns: species, latitude, longitude, type")
   }
 
-  if(isFALSE(identical(names(Occurrence_data),par_names))){
+  if(isFALSE(identical(names(Occurrence_data[,1:4]),par_names))){
     stop("Please format the column names in your dataframe as species, latitude, longitude, type")
   }
 
@@ -94,30 +96,31 @@ FCSex <- function(Species_list, Occurrence_data, Raster_list,
   }
 
 
-  # call SRSex
     #EBB: if raw dataset is provided, filter points to only one database,
     #     to avoid many duplicates
-  par_names_raw <- c("species","latitude","longitude","type","database")
-  if(isFALSE(identical(names(Occurrence_data_raw),par_names_raw))){
-    print("If you'd like to use a different occurrence point dataframe for the SRSex calculation, pass it into the Occurrence_data_raw variable and format as species, latitude, longitude, type, database")
-  } else {
-    print(paste0("For the SRSex calculation, filtering raw points to include those from ",Select_database," only. If you'd like to filter by a different database, pass it into the Select_database variable"))
-    Occurrence_data_raw <- Occurrence_data_raw %>%
-      filter(database == Select_database | database == "Ex_situ") %>%
-      select(-database)
-  }
+#  par_names_raw <- c("species","latitude","longitude","type","database")
+#  if(isFALSE(identical(names(Occurrence_data_raw),par_names_raw))){
+#    print("If you'd like to use a different occurrence point dataframe for the SRSex calculation, pass it into the Occurrence_data_raw variable and format as species, latitude, longitude, type, database")
+#  } else {
+#    print(paste0("For the SRSex calculation, filtering raw points to include those from ",Select_database," only. If you'd like to filter by a different database, pass it into the Select_database variable"))
+#    Occurrence_data_raw <- Occurrence_data_raw %>%
+#      filter(database == Select_database | database == "Ex_situ") %>%
+#      select(-database)
+#  }
+    #EBB: source edits...
+  #source("/Users/emily/Documents/GitHub/GapAnalysis/R/SRSex.R")
   SRSex_df <- SRSex(Species_list = Species_list,
-                    Occurrence_data = Occurrence_data_raw)
-  # call GRSex
+                    Occurrence_data_raw <- Occurrence_data_raw,
+                    Occurrence_data = Occurrence_data)
+    #EBB: source edits...
+  #source("/Users/emily/Documents/GitHub/GapAnalysis/R/GRSex.R")
   GRSex_df <- GRSex(Occurrence_data = Occurrence_data,
                     Species_list = Species_list,
                     Raster_list = Raster_list,
                     Buffer_distance = Buffer_distance,
                     Gap_Map = Gap_Map)
-
-  # call ERSex
     #EBB: source edits...
-  source("/Users/emily/Documents/GitHub/GapAnalysis/R/ERSex.R")
+  #source("/Users/emily/Documents/GitHub/GapAnalysis/R/ERSex.R")
   ERSex_df <- ERSex(Species_list = Species_list,
                     Occurrence_data = Occurrence_data,
                     Raster_list = Raster_list,
@@ -132,18 +135,24 @@ FCSex <- function(Species_list, Occurrence_data, Raster_list,
   } else {
     FCSex_df <- merge(SRSex_df, GRSex_df$GRSex, by ="species", all.x = TRUE)
   }
+  #EBB: check if df for ERS too
+  #FCSex_df <- merge(FCSex_df, ERSex_df$ERSex, by = "species", all.x = TRUE)
+  if(is.data.frame(ERSex_df)){
+    FCSex_df <- merge(FCSex_df, ERSex_df, by ="species", all.x = TRUE)
+  } else {
+    FCSex_df <- merge(FCSex_df, ERSex_df$ERSex, by ="species", all.x = TRUE)
+  }
 
-
-  FCSex_df <- merge(FCSex_df, ERSex_df$ERSex, by = "species", all.x = TRUE)
 
   # calculate the mean value for each row to determine fcs per species
   FCSex_df$FCSex <- rowMeans(FCSex_df[, c("SRSex", "GRSex", "ERSex")])
 
   #assign classes (exsitu)
-  FCSex_df$FCSex_class <- with(FCSex_df, ifelse(FCSex < 25, "HP",
-                                                ifelse(FCSex >= 25 & FCSex < 50, "MP",
-                                                       ifelse(FCSex >= 50 & FCSex < 75, "LP",
-                                                              "SC"))))
+  FCSex_df$FCSex_class <- with(FCSex_df, ifelse(FCSex < 25, "UP",
+                                                ifelse(FCSex >= 25 & FCSex < 50, "HP",
+                                                       ifelse(FCSex >= 50 & FCSex < 75, "MP",
+                                                              "LP"))))
+  FCSex_df <- FCSex_df %>% rename(Taxon = species)
 
 
   if(isTRUE(Gap_Map)){

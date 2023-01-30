@@ -44,7 +44,9 @@
 #' @importFrom raster raster crop projection
 
 
-SRSin <- function(Species_list, Occurrence_data, Raster_list,Pro_areas=NULL, Gap_Map=FALSE){
+SRSin <- function(Species_list, Occurrence_data,
+                  #Raster_list,
+                  Pro_areas=NULL, Gap_Map=FALSE){
 
   taxon <- NULL
   longitude <- NULL
@@ -56,16 +58,16 @@ SRSin <- function(Species_list, Occurrence_data, Raster_list,Pro_areas=NULL, Gap
     stop("Please add a valid data frame with columns: species, latitude, longitude, type")
   }
 
-  if(isFALSE(identical(names(Occurrence_data),par_names))){
+  if(isFALSE(identical(names(Occurrence_data[,1:4]),par_names))){
     stop("Please format the column names in your dataframe as species, latitude, longitude, type")
   }
 
   #Checking if user is using a raster list or a raster stack
-  if (isTRUE("RasterStack" %in% class(Raster_list))) {
-    Raster_list <- raster::unstack(Raster_list)
-  } else {
-    Raster_list <- Raster_list
-  }
+  #if (isTRUE("RasterStack" %in% class(Raster_list))) {
+  #  Raster_list <- raster::unstack(Raster_list)
+  #} else {
+  #  Raster_list <- Raster_list
+  #}
 
 
   #Checking if Gap_Map option is a boolean  or if the parameter is missing left Gap_Map as FALSE
@@ -96,32 +98,55 @@ SRSin <- function(Species_list, Occurrence_data, Raster_list,Pro_areas=NULL, Gap
   df <- data.frame(matrix(ncol = 2, nrow = length(Species_list)))
   colnames(df) <- c("species", "SRSin")
 
+  # EBB: just selecting the raster in order, instead of by species name
   for(i in seq_len(length(Species_list))){
     # pull the sdm to mask for
-    for(j in seq_len(length(Raster_list))){
-      if(grepl(j, i, ignore.case = TRUE)){
-        sdm <- Raster_list[[j]]
-      }
-      d1 <- Occurrence_data[Occurrence_data$species == Species_list[i],]
-    test <- GapAnalysis::ParamTest(d1, sdm)
-    if(isTRUE(test[1])){
-         stop(paste0("No Occurrence data exists, but and SDM was provide. Please check your occurrence data input for ", Species_list[i]))
-    }
-
-    };rm(j)
-    if(isFALSE(test[2])){
-      df$species[i] <- as.character(Species_list[i])
-      df$GRSex[i] <- 0
-      warning(paste0("Either no occurrence data or SDM was found for species ", as.character(Species_list[i]),
-                     " the conservation metric was automatically assigned 0"))
-    }else{
+#    sdm <- Raster_list[[i]]
+    #for(j in seq_len(length(Raster_list))){
+    #  if(grepl(j, i, ignore.case = TRUE)){
+    #    sdm <- Raster_list[[j]]
+    #  }
+    d1 <- Occurrence_data[Occurrence_data$species == Species_list[i],]
+#    test <- GapAnalysis::ParamTest(d1, sdm)
+#    if(isTRUE(test[1])){
+#         stop(paste0("No Occurrence data exists, but and SDM was provide. Please check your occurrence data input for ", Species_list[i]))
+#    }
+    #};rm(j)
+#    if(isFALSE(test[2])){
+#      df$species[i] <- as.character(Species_list[i])
+#      df$GRSex[i] <- 0
+#      warning(paste0("Either no occurrence data or SDM was found for species ", as.character(Species_list[i]),
+#                     " the conservation metric was automatically assigned 0"))
+#    }else{
       # restrict protected areas to those that are present within the model threshold
-      Pro_areas1 <- raster::crop(x = Pro_areas,y = sdm)
-      if(raster::res(Pro_areas1)[1] != raster::res(sdm)[1]){
-        Pro_areas1 <- raster::resample(x = Pro_areas1, y = sdm)
+      ###EBB: this doesn't completely work since some occurrence points are
+      ###     outside the SDM! Safer (but slower) to create buffers around points.
+      ###     this could probably be done better, but I don't think an SDM should be
+      ###     needed for this metric.
+        # turn occurrence point data into a SpatVector
+        spat_pts <- vect(d1, geom=c("longitude","latitude"), crs="EPSG:4326")
+        # reproject to specified projection
+        proj_df <- project(spat_pts,"EPSG:4326")
+        # place buffer around each point, then dissolve into one polygon
+        buffers <- buffer(proj_df,width=50000)
+        buffers <- aggregate(buffers,dissolve=TRUE)
+        # make into simple feature object type
+        buffers <- sf::st_as_sf(buffers)
+        # rasterize the buffers
+        buffers <- fasterize::fasterize(buffers,Pro_areas)
+        # trim raster extent to area with values
+        buffers <- raster::trim(buffers,padding=1)
+        # now return to the original code, using buffers instead of SDM
+      #sdm_eco <- sdm
+      sdm_eco <- buffers
+      sdm_eco[sdm_eco == 0] <- 1
+      Pro_areas1 <- raster::crop(x = Pro_areas,y = sdm_eco)
+      if(raster::res(Pro_areas1)[1] != raster::res(buffers)[1]){ #sdm
+        Pro_areas1 <- raster::resample(x = Pro_areas1, y = buffers) #sdm
       }
-      sdm[sdm[] != 1] <- NA
-      Pro_areasSpecies <- sdm * Pro_areas1
+      #sdm[sdm[] != 1] <- NA
+      #Pro_areasSpecies <- sdm * Pro_areas1
+      Pro_areasSpecies <- buffers * Pro_areas1
 
       # filter by specific species
 
@@ -130,13 +155,13 @@ SRSin <- function(Species_list, Occurrence_data, Raster_list,Pro_areas=NULL, Gap
        # extract values to all points
       sp::coordinates(occData1) <- ~longitude+latitude
       #Checking raster projection and assumming it for the occurrences dataframe shapefile
-      if(is.na(raster::crs(sdm))){
+      if(is.na(raster::crs(buffers))){ #sdm
         warning("No coordinate system was provided, assuming  +proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0","\n")
-        raster::projection(sdm) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+        raster::projection(buffers) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
       }
-      suppressWarnings(sp::proj4string(occData1) <- sp::CRS(raster::projection(sdm)))
+      suppressWarnings(sp::proj4string(occData1) <- sp::CRS(raster::projection(buffers))) #sdm
 
-      inSDM <- occData1[!is.na(raster::extract(x = sdm,y = occData1)),]
+      inSDM <- occData1[!is.na(raster::extract(x = buffers,y = occData1)),] #sdm
       # select all occurrences in SDM within protected area
       protectPoints <- sum(!is.na(raster::extract(x = Pro_areas1,y = inSDM)))
 
@@ -165,22 +190,20 @@ SRSin <- function(Species_list, Occurrence_data, Raster_list,Pro_areas=NULL, Gap
         gapP <- inSDM[is.na(raster::extract(x = Pro_areas1,y = inSDM)),]
         gapP<- sp::SpatialPoints(coords = gapP@coords)
         gap_map <- raster::rasterize(x = gapP, field = rep(x = 1, length(gapP)),
-                                     y = sdm, fun='count')
-        gap_map[is.na(gap_map),] <- 0
-        sdm[sdm[] !=1] <- NA
-        gap_map <- sdm * gap_map
+                                     y = buffers, fun='count') #sdm
+        #gap_map[is.na(gap_map),] <- 0
+        #sdm[sdm[] !=1] <- NA
+        gap_map <- buffers * gap_map #sdm
         GapMapIn_list[[i]] <- gap_map
-        names(GapMapIn_list[[i]] ) <- Species_list[[i]]
+        names(GapMapIn_list[[i]]) <- Species_list[[i]]
         }
       }
-  }
 
     if(isTRUE(Gap_Map)){
-      df <- list(SRSin=df, gap_maps = GapMapIn_list )
+      df <- list(SRSin=df, gap_maps = GapMapIn_list)
     }else{
       df <- df
     }
-
 
 return(df)
 }

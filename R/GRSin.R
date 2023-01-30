@@ -63,7 +63,7 @@ GRSin <- function(Species_list,Occurrence_data,Raster_list,Pro_areas=NULL, Gap_M
   }
 
 
-  if(isFALSE(identical(names(Occurrence_data),par_names))){
+  if(isFALSE(identical(names(Occurrence_data[,1:4]),par_names))){
     stop("Please format the column names in your dataframe as species, latitude, longitude, type")
   }
 
@@ -103,17 +103,17 @@ GRSin <- function(Species_list,Occurrence_data,Raster_list,Pro_areas=NULL, Gap_M
   # loop over species list
   for(i in seq_len(length(Species_list))){
     # select threshold map for a given species
-    for(j in seq_len(length(Raster_list))){
-      if(grepl(j, i, ignore.case = TRUE)){
-        sdm <- Raster_list[[j]]
-      }
+    #for(j in seq_len(length(Raster_list))){
+    #  if(grepl(j, i, ignore.case = TRUE)){
+      sdm <- Raster_list[[i]]
+    #  }
       d1 <- Occurrence_data[Occurrence_data$species == Species_list[i],]
       test <- GapAnalysis::ParamTest(d1, sdm)
       if(isTRUE(test[1])){
          stop(paste0("No Occurrence data exists, but and SDM was provide. Please check your occurrence data input for ", Species_list[i]))
-    }
+      }
 
-    };rm(j)
+   # };rm(j)
 
     if(isFALSE(test[2])){
       df$species[i] <- as.character(Species_list[i])

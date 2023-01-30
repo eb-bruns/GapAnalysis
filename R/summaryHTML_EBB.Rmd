@@ -1,0 +1,870 @@
+---
+title: "Summary of conservation gap analysis"
+author: "North American Fruit and Nut Tree Crop Wild Relatives Working Group"
+date: "February 2023"
+output:
+  html_document:
+    df_print: paged
+    highlight: tango
+    theme: yeti
+    #toc: no
+    #toc_depth: 4
+    #toc_float:
+    #  collapsed: yes
+    #smooth_scroll: no
+  #html_notebook: default
+---
+
+<style type="text/css">
+.main-container {
+  max-width: 2000px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.dataTables_wrapper .dt-buttons {
+  float:right
+}
+.button_small {
+  font-size: 12px;
+}
+</style>
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HC36QREGFE"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-HC36QREGFE');
+</script>
+
+*Emily Beckman Bruns, Colin Khoury, Nan McCarry, Abby Meyer, Ray Mims, and Emily Warschefsky*
+
+```{r Set-tmap-mode, echo=FALSE, message=FALSE, warning=FALSE}
+suppressWarnings(suppressMessages(require(tmap)))
+tmap::tmap_mode("view")
+```
+
+```{r Check-data-format, echo=FALSE, message=FALSE, warning=FALSE}
+
+#Checking Occurrence_data format
+  par_names <- c("species","latitude","longitude","type")
+
+  if(isFALSE(identical(names(Od[,1:4]),par_names))){
+    stop("Please format the column names in your dataframe as species,latitude,longitude,type")
+  }
+
+#Checking if user is using a raster list or a raster stack
+  if(class(Rl)=="RasterStack"){
+    Rl <- raster::unstack(Rl)
+  } else {
+    Rl <- Rl
+  }
+
+#Load in protected areas
+  if(is.null(Pro_areas) | missing(Pro_areas)){
+    if(file.exists(system.file("data/preloaded_data/protectedArea/wdpa_reclass.tif",package = "GapAnalysis"))){
+      Pro_areas <- raster::raster(system.file("data/preloaded_data/protectedArea/wdpa_reclass.tif",package = "GapAnalysis"))
+    } else {
+      stop("Protected areas file is not available yet. Please run the function GetDatasets()  and try again")
+    }
+  } else{
+    Pro_areas <- Pro_areas
+  }
+
+#Load in ecoregions shapefile
+  if(is.null(Ecoregions_shp)){
+    if(file.exists(system.file("data/preloaded_data/ecoRegion/tnc_terr_ecoregions.shp",package = "GapAnalysis"))){
+      Ecoregions_shp <- raster::shapefile(system.file("data/preloaded_data/ecoRegion/tnc_terr_ecoregions.shp", package = "GapAnalysis"),encoding = "UTF-8")
+    } else {
+      stop("Ecoregions file is not available yet. Please run the function GetDatasets() and try again")
+    }
+  } else{
+    Ecoregions_shp <- Ecoregions_shp
+  }
+
+#Round all numeric variables
+round_df <- function(x, digits) {
+    # x: data frame
+    # digits: number of digits to round
+    numeric_columns <- sapply(x, mode) == 'numeric'
+    x[numeric_columns] <-  round(x[numeric_columns], digits)
+    x
+}
+
+#Palette options
+#hPColor <- "#1184D4"
+#gPColor <- "#6300F0"
+#binaryPal <- c( "#FFFFFF","#45B320") # white, green
+ersBPal <- c("#cce0c5") # white, purple #7570b3
+gBufPal <- c("#e0cce6","#45B320") # white , green, purple
+ecoPal <- c("#7852A9FF","#E93FBCFF","#B33941FF","#1175BBFF","#DBA520FF",
+            "#EF7215FF","#4ABAC6FF","#997950FF","#E27069FF")
+ptsPal <- c("#3a3a3b","#89e81c")
+proPal <- "#45B320" # same color as val 2 in gBufPal
+#srsinPal <- c("#edd2c2", "#b31b07") # pink to red
+srsinPal <- brewer.pal(name="Reds",n=9)[2:9] #omit the first color b/c v light
+
+
+```
+
+```{r Run-all-analyses, echo=FALSE, message=FALSE, warning=FALSE, }
+#Re-declare inputs for ease of entering in values for all functions
+
+#In situ
+inSRS <- SRSin(Species_list = Sl, Occurrence_data = Od, #Raster_list = Rl,
+               Pro_areas = Pro_areas, Gap_Map = TRUE)
+
+inGRS <- GRSin(Species_list = Sl, Occurrence_data = Od, Raster_list = Rl,
+               Pro_areas = Pro_areas, Gap_Map = TRUE)
+
+inERS <- ERSin(Species_list = Sl, Occurrence_data = Od, Raster_list = Rl,
+               Pro_areas = Pro_areas, Ecoregions_shp = Ecoregions_shp, 
+               Gap_Map = TRUE)
+
+inFCS <- FCSin(Species_list = Sl, Occurrence_data = Od, Raster_list = Rl, 
+               Pro_areas = Pro_areas, Ecoregions_shp = Ecoregions_shp)
+
+
+#Ex situ
+exSRS <- SRSex(Species_list = Sl, Occurrence_data_raw = OdR, 
+               Occurrence_data = Od)
+
+exGRS <- GRSex(Occurrence_data = Od, Species_list = Sl,
+               Buffer_distance = Buffer_distance, Raster_list = Rl, 
+               Gap_Map = TRUE)
+
+exERS <- ERSex(Species_list = Sl, Occurrence_data = Od,
+               Buffer_distance = Buffer_distance, Raster_list = Rl,
+               Ecoregions_shp = Ecoregions_shp, Gap_Map = TRUE)
+
+exFCS <- FCSex(Species_list = Sl, Occurrence_data = Od,
+               Occurrence_data_raw = OdR, 
+               Buffer_distance = Buffer_distance, Raster_list = Rl,
+               Ecoregions_shp = Ecoregions_shp)
+
+#Summary
+fcsMean <- FCSc_mean(FCSex_df = exFCS, FCSin_df = inFCS)
+
+```
+
+<br>
+<br>
+<br>
+<br>
+
+# Threat status
+
+```{r Threat-status-table, echo=FALSE, message=FALSE, warning=FALSE}
+if("iucnredlist_category" %in% colnames(OdR) &
+   "natureserve_rank" %in% colnames(OdR)){
+  threat_tbl <- data.frame(
+    Taxon = gsub("_"," ",OdR$species[1]),
+    IUCNRedListCategory = OdR$iucnredlist_category[1],
+    NatureServeConservationRank = OdR$natureserve_rank[1])
+}
+t0 <- knitr::kable(x = threat_tbl)
+kableExtra::kable_styling(kable_input = t0, bootstrap_options = "striped", 
+                          full_width = F, font_size = 16, position = "left")
+
+```
+
+Learn more about the <a href="https://www.iucnredlist.org" target="_blank">IUCN Red List of Threatened Species</a> and <a href="https://explorer.natureserve.org/AboutTheData/DataTypes/ConservationStatusCategories" target="_blank">NatureServe</a>
+
+<br>
+<br>
+<br>
+<br>
+
+# Summary of occurrences
+
+```{r Occurrence-summary-table, echo=FALSE, message=FALSE, warning=FALSE}
+ocCount <- OccurrenceCounts(
+  species = Sl[1], Occurrence_data_raw = OdR, Occurrence_data = Od)
+ocCount <- round_df(ocCount, 2)
+if(length(Sl)>1){
+  for(i in 2:length(Sl)){
+o <- OccurrenceCounts(
+  species = Sl[i], Occurrence_data_raw = OdR, Occurrence_data = Od)
+o <- round_df(o, 4)
+ocCount <- rbind(ocCount, o)
+  }
+}
+nam1 <- colnames(ocCount)
+colnames(ocCount) <- c("Taxon", nam1[c(2:length(nam1))])
+t1<- knitr::kable(x = ocCount)
+kableExtra::kable_styling(kable_input = t1, bootstrap_options = "striped", 
+                          full_width = F, font_size = 16, position = "left")
+
+```
+*TotalRecords*: Number of occurrences associated with the taxon; gathered from GBIF, iDigBio, IUCN Red List, SEINet, BIEN, USDA FIA, and wild collection locations of ex situ material.
+
+*TotalCoords*: Number of occurrences with valid latitude and longitude.
+
+*TotalExsituRecords*: Number of ex situ conservation (genebank and botanical garden) accessions.
+
+*TotalExsituCoords*: Number of ex situ conservation accessions with valid latitude and longitude.
+
+*TotalRefRecords*: Number of reference (e.g. herbarium voucher and observation) occurrences.
+
+*TotalRefCoords*: Number of reference occurrences with valid latitude and longitude (used for spatial analyses).
+
+```{r Occurrence-download, echo=FALSE, message=FALSE, warning=FALSE}
+
+## raw occurrence data
+t10 <- OdR %>% 
+  dplyr::filter(type=="H") %>%
+  select(taxon_name,database,latitude,longitude,basisOfRecord,year,
+         establishmentMeans,individualCount,coordinateUncertaintyInMeters,
+         datasetName,references,UID) %>%
+  mutate(database = recode(database,"SEINet" = "NorthAm_herbaria"))
+
+t10.nm <- paste0("RefRecords_Jan2023_NAFruitNutCWR-",Sl)
+
+t10 %>% download_this(
+  output_name = t10.nm,
+  output_extension = ".xlsx",
+  button_label = "Download RefRecords (raw data)",
+  button_type = "default",
+  has_icon = TRUE,
+  icon = "fa fa-save",
+  class = "button_small")
+
+## mapped occurrence data
+t11 <- Od %>% 
+  dplyr::filter(type=="H") %>%
+  select(taxon_name,database,latitude,longitude,basisOfRecord,year,
+         establishmentMeans,individualCount,coordinateUncertaintyInMeters,
+         datasetName,references,UID) %>%
+  mutate(database = recode(database,"SEINet" = "NorthAm_herbaria"))
+
+t11.nm <- paste0("RefCoordsMapped_Jan2023_NAFruitNutCWR-",Sl)
+
+t11 %>% download_this(
+  output_name = t11.nm,
+  output_extension = ".xlsx",
+  button_label = "Download RefCoords (vetted for mapping)",
+  button_type = "default",
+  has_icon = TRUE,
+  icon = "fa fa-save",
+  class = "button_small")
+
+#DT::datatable(t11,
+#              extensions = 'Buttons',
+#              options = list(dom = 'Bfrtip', #l
+#                            pageLength = 3,
+#                             buttons = list(list(
+#                               extend = 'collection',
+#                               buttons = c('csv', 'excel', 'pdf'),
+#                               text = 'Download RefCoords (vetted for mapping)',
+#                               filename = t11.nm)
+#                             #,lengthMenu = list(c(10,25),
+#                             #                  c(10,25))
+#                             )),
+#              rownames = FALSE)
+
+```
+You can also download reference occurrences for all target taxa in one file <a href="https://NorthAmericanFruitNutTreeCWR.github.io/docs/references" target="_blank">here</a>.
+
+<br>
+<br>
+<br>
+<br>
+
+# Ex situ conservation gap analysis
+
+The table below shows the ex situ conservation gap analysis summary results. The **Sampling Representativeness Score (SRS) ex situ** process assesses the completeness of ex situ conservation collections, calculating the ratio of germplasm accessions (genebanks and botanical gardens) available in ex situ repositories to reference records for each taxon, making use of all compiled records, regardless of whether they include coordinates, with an ideal (i.e., comprehensive) conservation ratio of 1:1. The **Geographical Representativeness Score (GRS) ex situ** process provides a geographic measurement of the proportion of a taxon's range that can be considered to be conserved in ex situ repositories. The **Ecological Representativeness Score (ERS) ex situ** process provides an ecological measurement of the proportion of a taxon's range that can be considered to be conserved in ex situ repositories. All scores are bound between 0 and 100, with 0 representing an extremely poor state of conservation, and 100 representing comprehensive protection. The summary ex situ conservation score is called the **Final Conservation Score (FCS) ex situ** and is a mean of the three ex situ conservation scores. The FCS is used to categorize taxa into an **FCS_class ex situ**, with urgent priority for further conservation action assigned when FCS < 25, high priority where 25 ≤ FCS < 50, medium priority where 50 ≤ FCS < 75, and low priority for taxa whose FCS ≥75.
+
+```{r Exsitu-results-table, echo=FALSE, message=FALSE, warning=FALSE}
+### ADD BREAKDOWN OF DATABASES ??
+
+# develop ex situ data summary
+exsituSummary <- data.frame(matrix(nrow = 1, ncol = 6))
+colnames(exsituSummary) <- c("Taxon", "SRSex", "GRSex", "ERSex","FCSex", "FCSex_class")
+exsituSummary[1,] <- exFCS[1,]
+
+exsituSummary <- round_df(exsituSummary, 2)
+exsituSummary$Taxon <- gsub("_"," ",as.character(exsituSummary$Taxon))
+
+exsituSummary$FCSex_class <- recode(exsituSummary$FCSex_class,
+                                    "UP" = "Urgent Priority",
+                                    "HP" = "High Priority",
+                                    "MP" = "Medium Priority",
+                                    "LP" = "Low Priority")
+
+exsituSummary <- exsituSummary %>% rename('SRS ex situ' = SRSex,
+                                          'GRS ex situ' = GRSex,
+                                          'ERS ex situ' = ERSex,
+                                          'FCS ex situ' = FCSex,
+                                          'FCS_class ex situ' = FCSex_class)
+
+t2 <- knitr::kable(x = exsituSummary)
+kableExtra::kable_styling(kable_input = t2, bootstrap_options = "striped", 
+                          full_width = F, font_size = 16, position = "left")
+```
+<br>
+
+### Table of ex situ conservation collections reporting germplasm
+
+```{r Exsitu-collections-table, echo=FALSE, message=FALSE, warning=FALSE}
+exsituRecords <- OdR %>%
+  dplyr::filter(type=="G") %>%
+  mutate(establishmentMeans = recode(establishmentMeans,
+                                     "NATIVE" = "Wild",
+                                     "CULTIVATED" = "Horticultural",
+                                     "UNCERTAIN" = "Unknown"))
+
+if(nrow(exsituRecords)>0){
+  exsituMapped <- Od %>% dplyr::filter(type=="G")
+  if(nrow(exsituMapped)>0){
+    exsituMapped$mapped <- "Mapped"
+    exsituMapped <- exsituMapped %>% dplyr::select(UID,mapped)
+    exsituRecords <- left_join(exsituRecords,exsituMapped,by="UID")
+    exsituRecords$mapped[which(
+      is.na(exsituRecords$mapped) & exsituRecords$establishmentMeans == "Wild")] <- "Not Mapped" 
+    exsituRecords$mapped[which(is.na(exsituRecords$mapped))] <- "N/A" 
+  } else {
+    exsituRecords$mapped <- "N/A"
+  }
+  
+  t20 <- data.frame("ExSituCollection" = exsituRecords$datasetName,
+                    "ProvenanceType" = exsituRecords$establishmentMeans,
+                    "WildLocationMapped" = exsituRecords$mapped,
+                    "AccessionNumber" = exsituRecords$references,
+                    "NumberOfIndividuals" = exsituRecords$individualCount,
+                    "CollectionYear" = as.character(exsituRecords$year))
+  
+  #t20 <- knitr::kable(x = t20)
+  #kableExtra::kable_styling(kable_input = t20, bootstrap_options = "striped", full_width = T)
+  print.message <- FALSE
+} else {
+  t20 <- NULL
+  print.message <- TRUE
+}
+
+DT::datatable(t20, rownames = FALSE, extensions = 'Buttons',
+              options = list(dom = 'lfrtip',#B',
+                             #buttons = list(list(
+                             #  extend = 'collection',
+                             #  buttons = c('csv', 'excel', 'pdf'),
+                             #  text = 'Download',
+                             #  filename = paste0("exsitu_accessions_2022_NAFruitNutCWR-",Sl))),
+                             lengthMenu = list(c(10,20),c('10','20'))))
+
+if(print.message){print("There are no ex situ conservation collections reporting this taxon.")}
+#`r if(print.message){"There are no ex situ conservation collections reporting this taxon."}`
+
+```
+*ExSituCollection*: Abbreviated name of ex situ conservation collection holding the germplasm. Names with numbers (e.g. GBR004) are institution <a href="https://www.fao.org/wiews/data/organizations" target="_blank">codes</a> for genebanks.
+
+*ProvenanceType*: The original source of the plant material, categorized as Horticultural, Wild (includes cultivated-from-wild), or Unknown. 
+
+*WildLocationMapped*: Whether the wild source location has a valid latitude and longitude; if so, it is included in the spatial analyses and maps below.
+
+*AccessionNumber*: Institution-specific unique identifier.
+
+*NumberOfIndividuals*: Number of living or viable individuals representing an accession.
+
+*CollectionYear*: Year of original wild collection.
+
+```{r Exsitu-download, echo=FALSE, message=FALSE, warning=FALSE}
+# add download button to page
+if(!print.message){
+ t20 %>% download_this(
+  output_name = paste0('exsitu_accessions_2022_NAFruitNutCWR-',Sl),
+  output_extension = ".xlsx",
+  button_label = "Download ex situ collections data",
+  button_type = "default",
+  has_icon = TRUE,
+  icon = "fa fa-save",
+  class = "button_small")
+}
+```
+
+Contact data@bgci.org to request ex situ accessions data with all fields, including source and wild locality information.
+
+<br>
+
+### Map of ex situ geographical representativeness (GRS ex situ)
+
+Taxon's potential distribution, occurrence points surrounded by 50km buffers (estimated distribution), and germplasm collection points surrounded by 50km buffers (potential distribution conserved ex situ). Use the layers icon on the left side of the map to change the basemap and toggle layers on/off. Click each point for more information.
+
+```{r Map-GRSex, echo=FALSE, message=FALSE, warning=FALSE}
+
+## create vector layer of buffers around points 
+buff <- create.buffers(Od,50000,pt.proj,pt.proj,boundary,"latitude","longitude")
+
+## subset of just ex situ points
+gd <- Od[Od$type == "G",]
+## subset of occurrence points without ex situ
+Od_NoEx <- Od[Od$type == "H",]
+
+## if there is an ecoregions band too, remove so just SDM for leaflet map
+RlL <- Rl
+RlL[which(RlL[] != 1)] <- NA
+
+
+if(nrow(gd)>0){ # if there are ex situ points
+  ## create layer of buffers around ex situ points
+  buff_gd <- create.buffers(gd,50000,pt.proj,pt.proj,boundary,"latitude","longitude")
+  if(Rt=="SDM"){ # if SDM
+    map0 <- create.full.map(RlL,buff,Od_NoEx,buff_gd,gd)
+    map0
+  } else { # no SDM
+    map0 <- create.nosdm.map(RlL,buff,Od_NoEx,buff_gd,gd)
+    map0
+  }
+} else { # no ex situ points
+  if(Rt=="SDM"){ # if SDM
+    map0 <- create.noex.map(RlL,buff,Od_NoEx)
+    map0
+  } else { # no SDM
+    map0 <- create.noex.nosdm.map(RlL,buff,Od_NoEx)
+    map0
+  }
+}
+
+### OLD tmap version:
+# if needed, rework this section to get rid of additional layer (native area)
+r1 <- Rl[[1]] # provided externally
+r2 <- r1
+r2[r2==0]<-NA
+# old way, with native area layer:
+#r2[r2==1]<-2 # reclassification of 1 to 2
+
+#g1 <- exGRS$gap_maps[[1]] # NA, 0, 1
+#g1[is.na(g1),] <- 0
+#g2 <- r2 - g1 # gives the three elements
+
+#gd <- Od[Od$type == "G",]
+#gd <- gd[!is.na(gd$latitude),]
+
+#if(nrow(gd) >0 ){ # be careful with these conditional statements
+#  gp <- sp::SpatialPoints(coords = gd[,c(3,2)],proj4string = crs(r1))
+
+#tm_shape(g1, name = "Distribution model, and G buffers")+
+#  tm_raster(style="cat", title = "Map of GRSex",
+#  palette = gBufPal, # change above to just 2 values or just binaryPal
+#            labels = c(
+#                       "0: Potential distribution not conserved ex situ",
+#                       "1: Potential distribution conserved ex situ"))+
+#  tm_shape(gp, name = "G occurrences")+
+#    tm_dots(col = gPColor,title = "Germplasma Occurrences",legend.show = TRUE)
+#}else{
+#   tm_shape(g2, name = "Native area and distribution model")+
+#  tm_raster(style="cat", title = "Map of GRSex",palette = gBufPal,
+#            labels = c("0: Native area",
+#                       "1: Potential distribution not conserved ex situ",
+#                       "2: Potential distribution conserved ex situ"))
+#}
+
+#
+#     if(1 %in% unique(values(comb2))){
+#           tm_shape(comb2, name = "Native area, distribution model, and G buffers") +
+#       tm_raster(palette = gBufPal, style = "cat",
+#                 title = paste0("GRSex of ", species))+
+#     tm_shape(gPoint, name = "G occurrences") + tm_dots(col = gPColor)+
+#       tm_scale_bar()
+#     }else{
+#     tm_shape(comb2, name = "Native area, distribution model, and G buffers") +
+#       tm_raster(palette = gBinary, style = "cat",
+#                 title = paste0("GRSex of ", species))+
+#     tm_shape(gPoint, name = "G occurrences") + tm_dots(col = gPColor)+
+#       tm_scale_bar()
+#     }
+#
+
+
+```
+
+<br>
+
+### Map of ex situ ecological representativeness (ERS ex situ)
+
+Taxon's potential distribution, with ecoregions highlighted where no ex situ conservation germplasm has been collected. Toggle on the occurrence point layer using the layers icon on the left side of the map.
+
+```{r Map-ERSex, echo=FALSE, message=FALSE, warning=FALSE, out.width = '100%'}
+
+g1 <- exERS$gap_maps[[1]]
+gEco <- unique(raster::values(g1))
+# remove NAs from conserved ecoregions
+gEco <- gEco[!is.na(gEco)]
+
+e1 <- Ecoregions_shp[Ecoregions_shp$ECO_ID_U %in% gEco,] #ecoregions present in the raster
+# make occurrence data into spatil object for mapping
+Od_prep <- Od %>% mutate(type = recode(type, "G" = "zG"))
+Od_shp <- SpatialPointsDataFrame(Od_prep[,c("longitude", "latitude")],
+                                 Od_prep[,c("database","type")])
+  
+if(length(gEco)!=0){ # & !is.na(gEco[1])
+  # mask  based on predicted presence area
+  r2 <- r1
+  r2[r2 == 0] <- NA # make native area NA 
+  
+  # convert to sf object for conversion using fasterize
+  e1 <- sf::st_as_sf(e1, r2)
+  # generate a ecoregion raster keeping the unique id.
+  e1 <- fasterize::fasterize(e1, r2, field = "ECO_ID_U") #polygon to raster
+  e1 <- e1 * r2 # clip ecoregions to area the species is predicted
+
+  if(length(gEco) > 30){
+    map1=
+      tm_shape(r2, name = "Taxon's potential distribution") +
+        tm_raster(palette = ersBPal, style = "cat", 
+                  title = "Ecoregions conserved ex situ",
+                  labels = c("Taxon's potential distribution")) +
+      tm_shape(e1, name = "Ecoregions not conserved ex situ") +
+        tm_raster(palette = ecoPal, style ="pretty", title = "Ecoregions not conserved ex situ") +
+      tm_shape(Od_shp, name = "Occurrence points") + 
+        tm_dots("type", palette = ptsPal, border.col = ptsPal[1], popup.vars = FALSE,
+                size = 0.03, title = "Occurrence points", alpha = 0.9,
+                labels = c("Not conserved ex situ","Conserved ex situ")) +
+      tm_legend(legend.format=list(fun=function(x) formatC(x, digits=0, format="d")))
+    map1 <- map1 %>% tmap_leaflet() %>% leaflet::hideGroup("Occurrence points")
+  }else{
+    map1=
+      tm_shape(r2, name = "Taxon's potential distribution")+
+        tm_raster(palette = ersBPal, style = "cat", 
+                  title = "Ecoregions conserved ex situ",
+                  labels = c("Taxon's potential distribution"))+
+      tm_shape(e1, name = "Ecoregions not conserved ex situ") +
+        tm_raster(palette = ecoPal, style ="cat", title = "Ecoregions not conserved ex situ") +
+      tm_shape(Od_shp, name = "Occurrence points") + 
+        tm_dots("type", palette = ptsPal, border.col = ptsPal[1], popup.vars = FALSE,
+                size = 0.03, title = "Occurrence points", alpha = 0.9,
+                labels = c("Not conserved ex situ","Conserved ex situ")) +
+      tm_legend(legend.format=list(fun=function(x) formatC(x, digits=0, format="f")))
+    map1 <- map1 %>% tmap_leaflet() %>% leaflet::hideGroup("Occurrence points")
+  }
+  # side-bt-side maps
+  #tmap_arrange(map1,map2)
+  print.message3 <- FALSE
+} else {
+  print.message3 <- TRUE
+  map1 <- "All ecoregions are conserved ex situ."
+}
+
+suppressWarnings(map1)
+
+#`r if(print.message3){"All ecoregions are conserved ex situ."}`
+
+```
+
+```{r Table-ERSex, echo=FALSE, message=FALSE, warning=FALSE}
+
+predictedPresence <- sp::SpatialPoints(raster::rasterToPoints(r1))
+suppressWarnings(raster::crs(predictedPresence) <- raster::crs(Ecoregions_shp))
+ecoVals <- suppressWarnings(sp::over(x = predictedPresence, y = Ecoregions_shp))
+ecoVals <- data.frame(ECO_ID_U=(unique(ecoVals$ECO_ID_U)))
+ecoVals <- ecoVals[which(!is.na(ecoVals) & ecoVals>0),]
+
+allEco <- Ecoregions_shp@data[Ecoregions_shp@data$ECO_ID_U %in% ecoVals, ]
+allEco <- allEco[which(!duplicated(allEco)),]
+allEco$`Conserved Ex situ` <- NA
+
+for(i in 1:nrow(allEco)){
+  if(allEco$ECO_ID_U[i] %in% gEco){
+    allEco$`Conserved Ex situ`[i] <- "Not Conserved"
+  }else{
+    allEco$`Conserved Ex situ`[i] <- "Conserved"
+  }
+}  
+
+#EBB: if there are no ex situ points, make all ecoregions 'Not Conserved'
+if(nrow(gd)==0){
+  allEco$`Conserved Ex situ` <- "Not Conserved"
+}
+  
+allEco <- allEco[,c("ECO_ID_U", "ECO_NAME","Conserved Ex situ", "WWF_MHTNAM" ,"SOURCEDATA")]
+
+file.nm <- paste0("WDPA_ecoregions_exsitu_conservation-",Sl)
+
+#DT::datatable(allEco,rownames = FALSE)
+DT::datatable(allEco, rownames = FALSE, #extensions = 'Buttons',
+              caption = "Table of ecoregions within the taxon's potential distribution, with regard to ex situ conservation",
+              options = list(dom = 'lfrtip',#B',
+                             #buttons = list(list(
+                             #   extend = 'collection',
+                             #   buttons = c('csv', 'excel', 'pdf'),
+                             #   text = 'Download',
+                             #  filename = file.nm)),
+                             lengthMenu = list(c(10,20),c('10','20'))))
+
+```
+
+*ECO_ID_U*: Unique ID value representing the ecoregion on the map.
+
+*ECO_NAME*: The name of the ecoregion.
+
+*Conserved Ex Situ*: Whether germplasm has been collected within this ecoregion for ex situ conservation.
+
+*WWF_MHTNAM*: Major habitat type; a more generalized category of ecoregion.
+
+*SOURCEDATA*: The citation of the ecoregion definition.
+
+View map of all TNC global ecoregions <a href="https://geospatial.tnc.org/datasets/7b7fb9d945544d41b3e7a91494c42930_0/explore?location=25.829513%2C-67.148437%2C4.00" target="_blank">here</a>
+
+<br>
+<br>
+<br>
+<br>
+
+# In situ conservation gap analysis
+
+The table below shows the in situ conservation gap analysis summary results. The **Sampling Representativeness Score (SRS) in situ** reports the proportion of occurrences which fall within protected areas (WDPA 2019). The **Geographical Representativeness Score (GRS) in situ** process provides a geographic measurement of the proportion of a taxon’s range that can be considered to be conserved in protected areas. The **Ecological Representativeness Score (ERS) in situ** process provides an ecological measurement of the proportion of a taxon's range that can be considered to be conserved in protected areas. All scores are bound between 0 and 100, with 0 representing an extremely poor state of conservation, and 100 representing comprehensive protection. The summary in situ conservation score is called the **Final Conservation Score (FCS) in situ** and is a mean of the three in situ conservation scores. The FCS is used to categorize taxa into an **FCS_class in situ**, with urgent priority for further conservation action assigned when FCS < 25, high priority where 25 ≤ FCS < 50, medium priority where 50 ≤ FCS < 75, and low priority for taxa whose FCS ≥75.
+
+```{r Insitu-results-table, echo=FALSE, message=FALSE, warning=FALSE}
+# develop ex situ data summary
+insituSummary <- data.frame(matrix(nrow = 1, ncol = 6))
+colnames(insituSummary) <- c("Taxon", "SRSin", "GRSin", "ERSin","FCSin","FCSin_class")
+insituSummary[1,] <- inFCS[1,]
+
+insituSummary <- round_df(insituSummary, 2)
+insituSummary$Taxon <- gsub("_"," ",as.character(insituSummary$Taxon))
+
+insituSummary$FCSin_class <- recode(insituSummary$FCSin_class,
+                                    "UP" = "Urgent Priority",
+                                    "HP" = "High Priority",
+                                    "MP" = "Medium Priority",
+                                    "LP" = "Low Priority")
+
+insituSummary <- insituSummary %>% rename('SRS in situ' = SRSin,
+                                          'GRS in situ' = GRSin,
+                                          'ERS in situ' = ERSin,
+                                          'FCS in situ' = FCSin,
+                                          'FCS_class in situ' = FCSin_class)
+
+t3 <- knitr::kable(x = insituSummary)
+kableExtra::kable_styling(kable_input = t3, bootstrap_options = "striped", 
+                          full_width = F, font_size = 16, position = "left")
+
+```
+
+<br>
+
+### Map of in situ sampling representativeness (SRS in situ)
+
+Taxon occurrences that are outside protected areas, with values summarized by number of occurrences per cell. Toggle on the occurrence point layer using the layers icon on the left side of the map.
+
+```{r Map-SRSin, echo=FALSE, message=FALSE, warning=FALSE, out.width = '100%'}
+g1 <- inSRS$gap_maps[[1]]
+Pro_areas_now <- raster::crop(x = Pro_areas, y = r1)
+Pro_areas_now <- raster::resample(x = Pro_areas_now, y = r1,method = "ngb")
+p1 <- r1 * Pro_areas_now
+p1[p1 == 0]<-NA
+
+map2=
+  tm_shape(g1, name = "Density of occurrences outside protected areas")+
+    tm_raster(style = "pretty",  palette = srsinPal, as.count = TRUE,
+              title = "Number of occurrences outside protected areas") +
+  tm_shape(p1, name = "Protected areas") +
+    tm_raster(palette = proPal, title = "Protected areas",
+              labels = " ") +
+  tm_shape(Od_shp, name = "Occurrence points") + 
+    tm_dots(col = ptsPal[1], border.alpha = 0, popup.vars = FALSE,
+            size = 0.01, title = "Occurrence points", alpha = 0.9)
+map2 <- map2 %>% tmap_leaflet() %>% leaflet::hideGroup("Occurrence points")
+
+suppressWarnings(map2)
+
+```
+
+<br>
+
+### Map of in situ geographical representativeness (GRS in situ)
+
+Taxon's potential distribution, with distribution occurring within existing protected areas highlighted. Toggle on the occurrence point layer using the layers icon on the left side of the map.
+
+```{r Map-GRSin, echo=FALSE, message=FALSE, warning=FALSE, out.width = '100%'}
+#r1 <- Rl[[1]]
+p1[is.na(p1)]<-0
+g2 <- r2 + p1
+
+map3=
+  tm_shape(g2, name = "Taxon's potential distribution")+
+    tm_raster(style = "cat", palette = gBufPal,
+              title = "Taxon's potential distribution",
+              labels = c("Outside protected areas",
+                         "Within protected areas")) +
+  tm_shape(Od_shp, name = "Occurrence points") + 
+    tm_dots(col = ptsPal[1], border.alpha = 0, popup.vars = FALSE,
+              size = 0.01, title = "Occurrence points", alpha = 0.9)
+map3 <- map3 %>% tmap_leaflet() %>% leaflet::hideGroup("Occurrence points")
+
+suppressWarnings(map3)
+
+```
+
+<br>
+
+### Map of in situ ecological representativeness (ERS in situ)
+
+Taxon's potential distribution, with ecoregions highlighted where no protected areas are present. Toggle on the occurrence point layer using the layers icon on the left side of the map.
+
+```{r Map-ERSin, echo=FALSE, message=FALSE, warning=FALSE, out.width = '100%'}
+
+g1 <- inERS$gap_maps[[1]]
+gEco <- na.omit(unique(raster::values(g1)))
+g1[g1 == 0] <- NA
+
+if(length(gEco)!=0){
+  if(length(gEco)>30){ # if more than 30 ecoregions, tmap could not visualize as categories ('cat' style)
+    map4=
+      tm_shape(r2, name = "Taxon's potential distribution")+
+        tm_raster(style = "pretty", palette = ersBPal, 
+                  title = "Ecoregions conserved in situ",
+                  labels = "Taxon's potential distribution")+
+      tm_shape(g1, name = "Ecoregions not conserved in situ")+
+        tm_raster(style = "cat", palette = ecoPal, title = "Ecoregions not conserved in situ") +
+      tm_shape(Od_shp, name = "Occurrence points") + 
+        tm_dots(col = ptsPal[1], border.alpha = 0, popup.vars = FALSE,
+                size = 0.01, title = "Occurrence points", alpha = 0.9) +
+      tm_legend(legend.format=list(fun=function(x) formatC(x, digits=0, format="f")))
+    map4 <- map4 %>% tmap_leaflet() %>% leaflet::hideGroup("Occurrence points")
+  } else {
+    if(length(gEco)== 1 & is.na(gEco[1])){
+      map4=
+        tm_shape(r2, name = "Taxon's potential distribution")+
+          tm_raster(style = "cat", palette = ersBPal, 
+                    title = "Ecoregions conserved in situ",
+                    labels = "Taxon's potential distribution")+
+        tm_shape(Od_shp, name = "Occurrence points") + 
+          tm_dots(col = ptsPal[1], border.alpha = 0, popup.vars = FALSE,
+                  size = 0.01, title = "Occurrence points", alpha = 0.9) +
+        tm_legend(legend.format=list(fun=function(x) formatC(x, digits=0, format="f")))
+      map4 <- map4 %>% tmap_leaflet() %>% leaflet::hideGroup("Occurrence points")
+    } else {
+      map4=
+        tm_shape(r2, name = "Taxon's potential distribution")+
+          tm_raster(style = "cat", palette = ersBPal, 
+                    title = "Ecoregions conserved in situ",
+                    labels = "Taxon's potential distribution")+
+        tm_shape(g1, name = "Ecoregions not conserved in situ")+
+          tm_raster(style = "cat", palette = ecoPal, title = "Ecoregions not conserved in situ") +
+        tm_shape(Od_shp, name = "Occurrence points") + 
+          tm_dots(col = ptsPal[1], border.alpha = 0, popup.vars = FALSE,
+                  size = 0.01, title = "Occurrence points", alpha = 0.9) +
+        tm_legend(legend.format=list(fun=function(x) formatC(x, digits=0, format="f")))
+      map4 <- map4 %>% tmap_leaflet() %>% leaflet::hideGroup("Occurrence points")
+    }
+  }
+  print.message2 <- FALSE
+} else {
+  print.message2 <- TRUE
+  map4 <- "All ecoregions are conserved in situ."
+}
+
+suppressWarnings(map4)
+
+#`r if(print.message2){"All ecoregions are conserved in situ."}`
+
+```
+
+```{r Table-ERSin, echo=FALSE, message=FALSE, warning=FALSE}
+
+gEco <- gEco[!is.na(gEco)]
+
+allEco <- Ecoregions_shp@data[Ecoregions_shp@data$ECO_ID_U %in% ecoVals, ]
+allEco <- allEco[which(!duplicated(allEco)),]
+
+if(length(gEco)>0){
+  allEco$`Conserved In situ` <- ifelse(test = allEco$ECO_ID_U %in% gEco,
+                                       yes = "Not Conserved",
+                                       no = "Conserved")
+} else {
+  allEco$`Conserved In situ` <- "Conserved"
+}
+
+allEco <- allEco[,c("ECO_ID_U", "ECO_NAME","Conserved In situ", "WWF_MHTNAM" ,"SOURCEDATA")]
+ 
+DT::datatable(allEco, rownames = FALSE, #extensions = 'Buttons',
+              caption = "Table of ecoregions within the taxon's potential distribution, with regard to in situ conservation",
+              options = list(dom = 'lfrtip',#B',
+                             #buttons = list(list(
+                             #  extend = 'collection',
+                             #  buttons = c('csv', 'excel', 'pdf'),
+                             #  text = 'Download',
+                             #  filename = paste0("WDPA_ecoregions_insitu_conservation-",Sl))),
+                             lengthMenu = list(c(10,20),c('10','20'))))
+  
+```
+
+*ECO_ID_U*: Unique ID value representing the ecoregion on the map.
+
+*ECO_NAME*: The name of the ecoregion.
+
+*Conserved In Situ*: Whether this ecoregion occurs within protected areas.
+
+*WWF_MHTNAM*: Major habitat type; a more generalized category of ecoregion.
+
+*SOURCEDATA*: The citation of the ecoregion definition.
+
+View map of all TNC global ecoregions <a href="https://geospatial.tnc.org/datasets/7b7fb9d945544d41b3e7a91494c42930_0/explore?location=25.829513%2C-67.148437%2C4.00" target="_blank">here</a>
+
+<br>
+<br>
+<br>
+<br>
+
+# Combined conservation gap analysis
+
+This table shows the combined ex situ and in situ conservation gap analysis metrics. The **Combined Final Conservation Score (FCS combined)** is the average of the FCS ex situ and FCS in situ. The conservation status of the taxon is categorized with regard to the ex situ and in situ conservation scores, and the combined score, with urgent priority for further conservation action assigned when FCS < 25, high priority where 25 ≤ FCS < 50, medium priority where 50 ≤ FCS < 75, and low priority for taxa whose FCS ≥75.
+
+```{r Analysis-summary-table, echo=FALSE, message=FALSE, warning=FALSE}
+fcsMean <- round_df(fcsMean, 2)
+fcsMean$Taxon <- gsub("_"," ",as.character(fcsMean$Taxon))
+
+#EBB: remove some columns that I don't think are necessary: 
+#     FCS_min, FCS_max, FCS_min_class, FCS_max_class
+fcsMean <- fcsMean[,c(1:5,8,11)]
+
+fcsMean$FCSex_class <- recode(fcsMean$FCSex_class,
+                              "UP" = "Urgent Priority","HP" = "High Priority",
+                              "MP" = "Medium Priority","LP" = "Low Priority")
+fcsMean$FCSin_class <- recode(fcsMean$FCSin_class,
+                              "UP" = "Urgent Priority","HP" = "High Priority",
+                              "MP" = "Medium Priority","LP" = "Low Priority")
+fcsMean$FCSc_mean_class <- recode(fcsMean$FCSc_mean_class,
+                                  "UP" = "Urgent Priority","HP" = "High Priority",
+                                  "MP" = "Medium Priority","LP" = "Low Priority")
+fcsMean <- fcsMean %>%
+  rename('FCS ex situ' = FCSex, 'FCS_class ex situ' = FCSex_class,
+         'FCS in situ' = FCSin, 'FCS_class in situ' = FCSin_class,
+         'FCS combined' = FCSc_mean, 'FCS_class combined' = FCSc_mean_class)
+
+t4 <- knitr::kable(x = fcsMean)
+kableExtra::kable_styling(kable_input = t4, bootstrap_options = "striped", 
+                          full_width = F, font_size = 16, position = "left")
+
+```
+A summary figure of all conservation scores for our 95 target taxa can be viewed <a href="https://NorthAmericanFruitNutTreeCWR.github.io/docs/references/summaryfig" target="_blank">here</a> and used to prioritize among taxa.
+
+<br>
+<br>
+<br>
+<br>
+
+*Additional resources – including data sources, citations, and methods information – can be found <a href="https://NorthAmericanFruitNutTreeCWR.github.io/docs/references" target="_blank">here</a>.*
+
+*Recommended citation:*
+Bruns, E.B., Khoury, C.K., McCarry, N., Meyer, A., Mims, R., Warschefsky E., and the North American Fruit and Nut Tree Crop Wild Relatives Working Group. (2023). Distributions and conservation status of North American fruit and nut tree crop wild relatives. Summary of conservation gap analysis for [TAXON NAME]. [URL].
+
+*This work was funded by the United States Botanic Garden. Emily Beckman Bruns was also supported by NSF ABI grant #1759759*
+
+<br>
+
+```{r Partner-logos, echo=FALSE, fig.align = "left"}
+## add partner logos
+# Composite of all from Photoshop
+knitr::include_graphics(file.path(main_dir,
+                                  "partner_logos/partner-logos-composite.png"))
+
+# OLD VERSION WITH EACH INDIVIDUALLY:
+#img1 <- rasterGrob(as.raster(readPNG("/Volumes/GoogleDrive-103729429307302508433/Shared drives/Global Tree Conservation Program/4. GTCP_Projects/Gap Analyses/Conservation Gap Analysis - FRUIT & NUT TREE CWR NORTH AMERICA/Gap-Analysis-Mapping/partner_logos/USBG_LOGOS_MEDIUM-GREEN-08.png")), interpolate = FALSE)
+# ....
+#grid.arrange(img1,img2,img3,img4,img5,img6, heights=3, ncol=6)
+
+```
+
+

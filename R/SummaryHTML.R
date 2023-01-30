@@ -54,33 +54,51 @@
 #' @importFrom sp coordinates proj4string CRS
 
 
-SummaryHTML <- function(Species_list, Occurrence_data, Raster_list,Buffer_distance=50000,Ecoregions_shp=NULL,Pro_areas=NULL,
-                         Output_Folder, writeRasters){
-  out_dir <- system.file(package = "GapAnalysis")
+SummaryHTML <- function(Species_list, Occurrence_data, Raster_list,
+                        #Rasterized_buffers_list,
+                        Buffer_distance=50000, Ecoregions_shp=NULL,
+                        Pro_areas=NULL, Output_Folder, writeRasters,
+                        #EBB: adding option for separate dataset and filtering
+                        #     column for SRS calculation
+                        Occurrence_data_raw=Occurrence_data,
+                        # for clipping buffers to land:
+                        boundary,
+                        # to tell if its an SDM or buffers
+                        Raster_type){
 
+  out_dir <- system.file(package = "GapAnalysis")
+  pt.proj <<- "EPSG:4326"
 
   if(missing(Occurrence_data)){
     stop("Please add a valid data frame with columns: species, latitude, longitude, type")
   }
 
-
-  if(!file.exists(paste0(out_dir,"/data/","preloaded_data","/","summaryHTML.Rmd"))){
-    stop("Rmd file is not available yet. Please run the function GetDatasets() and try again")
-    } else {
-      for(i in seq_len(length(Species_list))){
+  #EBB: dont need this right now since using own version of data
+  #if(!file.exists(paste0(out_dir,"/data/","preloaded_data","/","summaryHTML.Rmd"))){
+  #  stop("Rmd file is not available yet. Please run the function GetDatasets() and try again")
+  #  } else {
+#i <- 12
+      for(i in 1:length(Species_list)){
         Sl <- Species_list[i]
         Od <- Occurrence_data[Occurrence_data$species == Species_list[i], ]
+        #EBB: adding
+        OdR <- Occurrence_data_raw[Occurrence_data_raw$species == Species_list[i], ]
         #Checking if user is using a raster list or a raster stack
-        if (isTRUE("RasterStack" %in% class(Raster_list))) {
-          Raster_list <- raster::unstack(Raster_list)
-        } else {
-          Raster_list <- Raster_list
-        }
+        #if (isTRUE("RasterStack" %in% class(Raster_list))) {
+        #  Raster_list <- raster::unstack(Raster_list)
+        #} else {
+        #  Raster_list <- Raster_list
+        #}
         Rl <- Raster_list[[i]]
-        rmarkdown::render(input = paste0(out_dir,"/data/","preloaded_data","/","summaryHTML.Rmd"),
-                          output_dir = Output_Folder,
-                          output_file  = paste(as.character(Species_list[i]),"_SummaryReport.html")
+        #EBB: adding raster type (SDM or buffers)
+        Rt <- Raster_type[[i]]
+        #EBB: changing path to my version
+        rmarkdown::render(
+          #input = paste0(out_dir,"/data/","preloaded_data","/","summaryHTML.Rmd"),
+          input = paste0("/Users/emily/Documents/GitHub/SDBG_CWR-trees-gap-analysis/helpers/summaryHTML_EBB.Rmd"),
+          output_dir = Output_Folder,
+          output_file  = paste0(as.character(Species_list[i]),"_SummaryReport.html")
         )
       }
   }
-}
+#}

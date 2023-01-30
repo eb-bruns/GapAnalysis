@@ -52,12 +52,7 @@
 #' @importFrom raster overlay crop raster extent
 
 FCSin <- function(Species_list, Occurrence_data, Raster_list,
-                  # using rasterized buffers instead of SDM for SRS calc
-                  Rasterized_buffers_list,
-                  Ecoregions_shp=NULL, Pro_areas=NULL, Gap_Map=FALSE,
-                  #EBB: adding option for separate dataset and filtering
-                  #     column for SRS calculation
-                  Occurrence_data_raw=Occurrence_data, Select_database="GBIF"){
+                  Ecoregions_shp=NULL, Pro_areas=NULL, Gap_Map=FALSE){
 
   SRSin_df <- NULL
   GRSin_df <- NULL
@@ -73,7 +68,7 @@ FCSin <- function(Species_list, Occurrence_data, Raster_list,
     stop("Please add a valid data frame with columns: species, latitude, longitude, type")
   }
 
-  if(isFALSE(identical(names(Occurrence_data),par_names))){
+  if(isFALSE(identical(names(Occurrence_data[,1:4]),par_names))){
     stop("Please format the column names in your dataframe as species, latitude, longitude, type")
   }
 
@@ -111,34 +106,37 @@ FCSin <- function(Species_list, Occurrence_data, Raster_list,
   }
 
 
-  # call SRSin
   #EBB: if raw dataset is provided, filter points to only one database,
   #     to avoid many duplicates
-  par_names_raw <- c("species","latitude","longitude","type","database")
-  if(isFALSE(identical(names(Occurrence_data_raw),par_names_raw))){
-    print("If you'd like to use a different occurrence point dataframe for the SRSin calculation, pass it into the Occurrence_data_raw variable and format as species, latitude, longitude, type, database")
-  } else {
-    print(paste0("For the SRSin calculation, filtering raw points to include those from ",Select_database," only. If you'd like to filter by a different database, pass it into the Select_database variable"))
-    Occurrence_data_raw <- Occurrence_data_raw %>%
-      filter(database == Select_database | database == "Ex_situ") %>%
-      select(-database)
-  }
+#  par_names_raw <- c("species","latitude","longitude","type","database")
+#  if(isFALSE(identical(names(Occurrence_data_raw),par_names_raw))){
+#    print("If you'd like to use a different occurrence point dataframe for the SRSin calculation, pass it into the Occurrence_data_raw variable and format as species, latitude, longitude, type, database")
+#  } else {
+#    print(paste0("For the SRSin calculation, filtering raw points to include those from ",Select_database," only. If you'd like to filter by a different database, pass it into the Select_database variable"))
+#    Occurrence_data_raw <- Occurrence_data_raw %>%
+#      filter(database == Select_database | database == "Ex_situ") %>%
+#      select(-database)
+#  }
+    #EBB: source edits...
+  #source("/Users/emily/Documents/GitHub/GapAnalysis/R/SRSin.R")
   SRSin_df <- SRSin(Species_list = Species_list,
-                    Occurrence_data = Occurrence_data_raw,
+                    Occurrence_data = Occurrence_data,
                     # EBB: there are occurrences outside the SDM, so it doesn't
                     #      make sense to crop the protected areas by the SDM...?
                     #      updating to use buffers around the occurrence points
                     #      instead of the SDM...
-                    Raster_list = Rasterized_buffers_list,
+                    #Raster_list = Raster_list,
                     Pro_areas=Pro_areas,
                     Gap_Map = Gap_Map)
-
+    #EBB: source edits...
+  #source("/Users/emily/Documents/GitHub/GapAnalysis/R/GRSin.R")
   GRSin_df <- GRSin(Species_list = Species_list,
                     Occurrence_data = Occurrence_data,
                     Raster_list = Raster_list,
                     Pro_areas=Pro_areas,
                     Gap_Map = Gap_Map)
-
+  #EBB: source edits...
+  #source("/Users/emily/Documents/GitHub/GapAnalysis/R/ERSin.R")
   ERSin_df <- ERSin(Species_list = Species_list,
                     Occurrence_data =Occurrence_data,
                     Raster_list = Raster_list,
@@ -164,11 +162,11 @@ FCSin <- function(Species_list, Occurrence_data, Raster_list,
 
    #assign classes (exsitu)
 
-  FCSin_df$FCSin_class <- with(FCSin_df, ifelse(FCSin < 25, "HP",
-                                                ifelse(FCSin >= 25 & FCSin < 50, "MP",
-                                                       ifelse(FCSin >= 50 & FCSin < 75, "LP",
-                                                              "SC"))))
-
+  FCSin_df$FCSin_class <- with(FCSin_df, ifelse(FCSin < 25, "UP",
+                                                ifelse(FCSin >= 25 & FCSin < 50, "HP",
+                                                       ifelse(FCSin >= 50 & FCSin < 75, "MP",
+                                                              "LP"))))
+  FCSin_df <- FCSin_df %>% rename(Taxon = species)
 
 
   if(isTRUE(Gap_Map)){

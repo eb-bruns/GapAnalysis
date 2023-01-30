@@ -34,7 +34,10 @@
 #' @importFrom fasterize fasterize
 #' @importFrom stats median
 
-SRSex <- function(Species_list, Occurrence_data) {
+SRSex <- function(Species_list,
+                  # EBB: need to add raw occurrence data due to data format
+                  Occurrence_data_raw,
+                  Occurrence_data) {
 
   species <- NULL
 
@@ -45,33 +48,35 @@ SRSex <- function(Species_list, Occurrence_data) {
     stop("Please add a valid data frame with columns: species, latitude, longitude, type")
   }
 
-  if(isFALSE(identical(names(Occurrence_data),par_names))){
+  if(isFALSE(identical(names(Occurrence_data[,1:4]),par_names))){
     stop("Please format the column names in your dataframe as species, latitude, longitude, type")
   }
-
-
 
 
   dt1 <- data.frame(matrix(nrow = length(Species_list), ncol = 2))
   colnames(dt1) <- c("species", "SRSex")
 
   for(i in seq_len(length(Species_list))){
-    sp_counts <- GapAnalysis::OccurrenceCounts(Species_list[i], Occurrence_data)
+    # EBB: source edited version
+    #source("/Users/emily/Documents/GitHub/GapAnalysis/R/OccurrenceCounts.R")
+    sp_counts <- OccurrenceCounts(Species_list[i], Occurrence_data_raw,
+                                  Occurrence_data)
 
-    if(sp_counts$totalGRecords >= 1 & sp_counts$totalHRecords == 0){
+    if(sp_counts$TotalExsituRecords >= 1 & sp_counts$TotalRecords == 1){
       SRSex <-100
     }
 
     #### this works for full distributions
-    if (sp_counts$totalGRecords == 0 & sp_counts$totalHRecords ==0) {
+    if(sp_counts$TotalExsituRecords == 0) {
       SRSex <- 0
     } else {
-      SRSex <- min(c(100,(sp_counts$totalGRecords/sp_counts$totalHRecords)*100))
+      SRSex <- min(c(100,(sp_counts$TotalExsituRecords/sp_counts$TotalRefRecords)*100))
     }
     # add values to empty df
     dt1$species[i] <- as.character(Species_list[i])
     dt1$SRSex[i] <- SRSex
 
+#    print(paste0("Completed SRSex analysis for ", Species_list[i]))
   }
   return(dt1)
 }

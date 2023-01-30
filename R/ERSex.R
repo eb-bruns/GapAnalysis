@@ -75,8 +75,7 @@ ERSex <- function(Species_list, Occurrence_data, Raster_list,
     stop("Please add a valid data frame with columns: species, latitude, longitude, type")
   }
 
-
-  if(isFALSE(identical(names(Occurrence_data),par_names))){
+  if(isFALSE(identical(names(Occurrence_data[,1:4]),par_names))){
     stop("Please format the column names in your dataframe as species, latitude, longitude, type")
   }
 
@@ -119,53 +118,48 @@ ERSex <- function(Species_list, Occurrence_data, Raster_list,
 #i<-1
     speciesOcc <- Occurrence_data[which(Occurrence_data$species==Species_list[i]),]
 
-    if(nrow(speciesOcc[which(speciesOcc$type == "G"),]) == 0){
-      df$species[i] <- Species_list[i]
+     # EBB: just selecting the raster in order, instead of by species name
+    sdm <- Raster_list[[i]]
+    # select raster with species name
+    #for(j in seq_len(length(Raster_list))){
+    #  Raster_list[[j]]
+    #  if(grepl(j, i, ignore.case = TRUE)){
+    #    sdm <- Raster_list[[j]]
+    #  }
+
+    d1 <- Occurrence_data[Occurrence_data$species == Species_list[i],]
+    test <- GapAnalysis::ParamTest(d1, sdm)
+    if(isTRUE(test[1])){
+      stop(paste0("No Occurrence data exists, but an SDM was provided. Please check your occurrence data input for ", Species_list[i]))
+    }
+    #};rm(j)
+
+    if(isFALSE(test[2])){
+      df$species[i] <- as.character(Species_list[i])
       df$ERSex[i] <- 0
-    }else{
+      warning(paste0("Either no occurrence data or SDM was found for species ", as.character(Species_list[i]),
+                     " the conservation metric was automatically assigned 0"))
+    } else {
 
-      OccDataG <- speciesOcc
-      OccDataG <- speciesOcc[which(speciesOcc$type=="G"),c("longitude","latitude")]
+      #sp::coordinates(OccDataG) <- ~longitude+latitude
 
-      OccDataG <- OccDataG[which(!is.na(OccDataG$latitude) & !is.na(OccDataG$longitude)),]
+      #Checking raster projection and assumming it for the occurrences dataframe shapefile
+      if(is.na(raster::crs(sdm))){
+        warning("No coordinate system was provided, assuming  +proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0","\n")
+        raster::projection(sdm) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+      }
 
-      # EBB: make sure lat and long are numeric
-      #OccDataG$latitude <- as.numeric(OccDataG$latitude)
-      #OccDataG$longitude <- as.numeric(OccDataG$longitude)
+      # suppressWarnings(sp::proj4string(OccDataG) <- sp::CRS(raster::projection(sdm)))
+      # convert SDM from binary to 1-NA for mask and area
+      SdmMask <- sdm
+      SdmMask[which(SdmMask[] != 1)] <- NA
 
-      # # select raster with species name
-      for(j in seq_len(length(Raster_list))){
-        if(grepl(j, i, ignore.case = TRUE)){
-          sdm <- Raster_list[[j]]
-        }
-        d1 <- Occurrence_data[Occurrence_data$species == Species_list[i],]
-        test <- GapAnalysis::ParamTest(d1, sdm)
-        if(isTRUE(test[1])){
-          stop(paste0("No Occurrence data exists, but an SDM was provided. Please check your occurrence data input for ", Species_list[i]))
-        }
-
-      };rm(j)
-
-      if(isFALSE(test[2])){
-        df$species[i] <- as.character(Species_list[i])
-        df$ERSex[i] <- 0
-        warning(paste0("Either no occurrence data or SDM was found for species ", as.character(Species_list[i]),
-                       " the conservation metric was automatically assigned 0"))
-      } else {
-
-        #sp::coordinates(OccDataG) <- ~longitude+latitude
-
-        #Checking raster projection and assumming it for the occurrences dataframe shapefile
-        if(is.na(raster::crs(sdm))){
-          warning("No coordinate system was provided, assuming  +proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0","\n")
-          raster::projection(sdm) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
-        }
-
-        # suppressWarnings(sp::proj4string(OccDataG) <- sp::CRS(raster::projection(sdm)))
-        # convert SDM from binary to 1-NA for mask and area
-        SdmMask <- sdm
-        SdmMask[which(SdmMask[] != 1)] <- NA
-
+      if(nrow(speciesOcc[which(speciesOcc$type == "G"),]) == 0){
+        gPoints <- sp::SpatialPoints(raster::rasterToPoints(SdmMask))
+      }else{
+        OccDataG <- speciesOcc
+        OccDataG <- speciesOcc[which(speciesOcc$type=="G"),c("longitude","latitude")]
+        OccDataG <- OccDataG[which(!is.na(OccDataG$latitude) & !is.na(OccDataG$longitude)),]
         # buffer G points
         buffer <- GapAnalysis::Gbuffer(xy = OccDataG,
                                        dist_m = Buffer_distance,
@@ -176,65 +170,93 @@ ERSex <- function(Species_list, Occurrence_data, Raster_list,
         buffer_rs <- buffer_rs * SdmMask
         buffer_list[[i]] <- buffer_rs
         names(buffer_list[[i]]) <- Species_list[i]
-        gPoints <- sp::SpatialPoints(raster::rasterToPoints(buffer_rs))
+        #EBB: this is to catch when the ex situ buffer is totally outside the SDM,
+        #   which makes the buffer_rs empty (all NAs)
+        if(length(unique(values(buffer_rs)))==1){ # if only NAs
+          gPoints <- sp::SpatialPoints(raster::rasterToPoints(SdmMask))
+        } else {
+          gPoints <- sp::SpatialPoints(raster::rasterToPoints(buffer_rs))
+        }
         # extract values from ecoregions to points
         #suppressWarnings(raster::crs(gPoints) <- raster::crs(raster::projection(Ecoregions_shp)))
           #EBB: hardcoding this for now because the projection of the
           # ecoregions is the deprecated proj.4 representation;
           # above line throws this error:
           # Error in sp::CRS(...) : Cannot revertBOUNDCRS[SOURCECRS[GEOGCRS["unknown".......
-        raster::crs(gPoints) <- "EPSG:4326"
-        raster::crs(Ecoregions_shp) <- "EPSG:4326"
+      }
+      raster::crs(gPoints) <- "EPSG:4326"
+      raster::crs(Ecoregions_shp) <- "EPSG:4326"
 
-        ecoValsG <- suppressWarnings(sp::over(x = gPoints, y = Ecoregions_shp))
-        ecoValsG <- data.frame(ECO_ID_U=(unique(ecoValsG$ECO_ID_U)))
-        ecoValsG <- ecoValsG[which(!is.na(ecoValsG) & ecoValsG>0),]
+      ecoValsG <- suppressWarnings(sp::over(x = gPoints, y = Ecoregions_shp))
+      ecoValsG <- data.frame(ECO_ID_U=(unique(ecoValsG$ECO_ID_U)))
+      ecoValsG <- ecoValsG[which(!is.na(ecoValsG) & ecoValsG>0),]
 
-        # extract values from ecoregion to predicted presences points
-        predictedPresence <- sp::SpatialPoints(raster::rasterToPoints(SdmMask))
-        raster::crs(predictedPresence) <- raster::crs(Ecoregions_shp)
-        ecoVals <- suppressWarnings(sp::over(x = predictedPresence, y = Ecoregions_shp))
-        ecoVals <- data.frame(ECO_ID_U=(unique(ecoVals$ECO_ID_U)))
-        ecoVals <- ecoVals[which(!is.na(ecoVals) & ecoVals>0),]
+      # extract values from ecoregion to predicted presences points
+      predictedPresence <- sp::SpatialPoints(raster::rasterToPoints(SdmMask))
+      raster::crs(predictedPresence) <- raster::crs(Ecoregions_shp)
+      ecoVals <- suppressWarnings(sp::over(x = predictedPresence, y = Ecoregions_shp))
+      ecoVals <- data.frame(ECO_ID_U=(unique(ecoVals$ECO_ID_U)))
+      ecoVals <- ecoVals[which(!is.na(ecoVals) & ecoVals>0),]
 
+      if(nrow(speciesOcc[which(speciesOcc$type == "G"),]) == 0){
+        ERSex <- 0
+        df$species[i] <- Species_list[i]
+        df$ERSex[i] <- ERSex
+      } else if(length(unique(values(buffer_rs)))==1){
+        ERSex <- 0
+        df$species[i] <- Species_list[i]
+        df$ERSex[i] <- ERSex
+      } else {
         #calculate ERSex
         ERSex <- min(c(100, (length(ecoValsG)/length(ecoVals))*100))
         # assign values to df
         df$species[i] <- as.character(Species_list[i])
         df$ERSex[i] <- ERSex
+      }
 
-        # number of ecoregions present in model
-        if(isTRUE(Gap_Map)){
-          message(paste0("Calculating ERSex gap map for ",as.character(Species_list[i])),"\n")
-
+      # number of ecoregions present in model
+      if(isTRUE(Gap_Map)){
+        message(paste0("Calculating ERSex gap map for ",as.character(Species_list[i])),"\n")
+        #EBB: if no ex situ points or they are all outside SDM, all ecoregions are gaps
+        if(nrow(speciesOcc[which(speciesOcc$type == "G"),]) == 0){
+          ecoGap <- ecoVals[ecoVals %in% ecoValsG]
+        } else if(length(unique(values(buffer_rs)))==1){
+          ecoGap <- ecoVals[ecoVals %in% ecoValsG]
+          #if(length(ecoGap) == 0){
+          #  GapMapEx_list[[i]] <- paste0("All ecoregions within the model are within ",
+          #                               (Buffer_distance/1000),
+          #                               "km of G occurrence. There are no gaps")
+        } else {
           # ERSex Gap Map
           # select all ecoregions present in ecoVal(all points) but absent in ecoValG(g buffers)
           ecoGap <- ecoVals[!ecoVals %in% ecoValsG]
-          if(length(ecoGap) == 0){
-            GapMapEx_list[[i]] <- paste0("All ecoregions within the model are within ",
-                                         (Buffer_distance/1000),
-                                         "km of G occurrence. There are no gaps")
-
-          }else{
-            # pull selected ecoregions and mask to presence area of the model
-            eco2 <- Ecoregions_shp[Ecoregions_shp$ECO_ID_U %in% ecoGap,]
-            #convert to sf object for conversion using fasterize
-            eco2a <- sf::st_as_sf(eco2, SdmMask)
-            # generate a ecoregion raster keeping the unique id.
-            eco3 <- fasterize::fasterize(eco2a, SdmMask, field = "ECO_ID_U")
-            # mask so only locations within the predicted presence area is included.
-            gap_map <- eco3 * SdmMask
-            GapMapEx_list[[i]] <- gap_map
-            names(GapMapEx_list[[i]] ) <- Species_list[[i]]
-          }
+        }
+        #EBB: if there are no gaps, there is nothing to map..
+        if(length(ecoGap)==0){
+          gap_map <- SdmMask
+          gap_map[gap_map==1] <- NA
+          GapMapEx_list[[i]] <- gap_map
+          names(GapMapEx_list[[i]] ) <- Species_list[[i]]
+        } else {
+          # pull selected ecoregions and mask to presence area of the model
+          eco2 <- Ecoregions_shp[Ecoregions_shp$ECO_ID_U %in% ecoGap,]
+          #convert to sf object for conversion using fasterize
+          eco2a <- sf::st_as_sf(eco2, SdmMask)
+          # generate a ecoregion raster keeping the unique id.
+          eco3 <- fasterize::fasterize(eco2a, SdmMask, field = "ECO_ID_U")
+          # mask so only locations within the predicted presence area is included.
+          gap_map <- eco3 * SdmMask
+          GapMapEx_list[[i]] <- gap_map
+          names(GapMapEx_list[[i]] ) <- Species_list[[i]]
         }
       }
     }
   }
+#    print(paste0("Completed ERSex analysis for ", Species_list[[i]]))
     if(isTRUE(Gap_Map)){
-      df <- list(ERSex=df,buffer_list=buffer_list, gap_maps = GapMapEx_list )
+      df <- list(ERSex=df, buffer_list=buffer_list, gap_maps=GapMapEx_list)
     }else{
-      df <- list(ERSex=df,buffer_list=buffer_list)
+      df <- list(ERSex=df, buffer_list=buffer_list)
     }
 
   return(df)

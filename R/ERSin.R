@@ -62,20 +62,16 @@ ERSin <- function(Species_list,Occurrence_data,Raster_list,Pro_areas=NULL,Ecoreg
   ECO_ID_U <- NULL
   SdmMask <- NULL
 
-
   #Checking Occurrence_data format
   par_names <- c("species","latitude","longitude","type")
-
 
   if(missing(Occurrence_data)){
     stop("Please add a valid data frame with columns: species, latitude, longitude, type")
   }
 
-
-  if(isFALSE(identical(names(Occurrence_data),par_names))){
+  if(isFALSE(identical(names(Occurrence_data[,1:4]),par_names))){
     stop("Please format the column names in your dataframe as species, latitude, longitude, type")
   }
-
 
   #Checking if Gap_Map option is a boolean or if the parameter is missing left Gap_Map as FALSE
   if(is.null(Gap_Map) | missing(Gap_Map)){ Gap_Map <- FALSE
@@ -92,7 +88,6 @@ ERSin <- function(Species_list,Occurrence_data,Raster_list,Pro_areas=NULL,Ecoreg
     Raster_list <- Raster_list
   }
 
-
   ## ERSin analyzes how well protected areas cover the distribution model with regard to ecosystems covered
   df <- data.frame(matrix(ncol=2, nrow = length(Species_list)))
   colnames(df) <- c("species", "ERSin")
@@ -101,7 +96,7 @@ ERSin <- function(Species_list,Occurrence_data,Raster_list,Pro_areas=NULL,Ecoreg
     if(file.exists(system.file("data/preloaded_data/protectedArea/wdpa_reclass.tif",
                                package = "GapAnalysis"))){
       Pro_areas <- raster::raster(system.file("data/preloaded_data/protectedArea/wdpa_reclass.tif",
-                                            package = "GapAnalysis"))
+                                              package = "GapAnalysis"))
     } else {
       stop("Protected areas file is not available yet. Please run the function GetDatasets()  and try again")
     }
@@ -129,17 +124,17 @@ ERSin <- function(Species_list,Occurrence_data,Raster_list,Pro_areas=NULL,Ecoreg
   for(i in seq_len(length(Species_list))){
 
     # select threshold map for a given species
-    for(j in seq_len(length(Raster_list))){
-      if(grepl(j, i, ignore.case = TRUE)){
-        sdm <- Raster_list[[j]]
+    #for(j in seq_len(length(Raster_list))){
+    #  if(grepl(j, i, ignore.case = TRUE)){
+        sdm <- Raster_list[[i]]
+    #  }
+      d1 <- Occurrence_data[Occurrence_data$species == Species_list[i],]
+      test <- GapAnalysis::ParamTest(d1, sdm)
+      if(isTRUE(test[1])){
+        stop(paste0("No Occurrence data exists, but and SDM was provide. Please check your occurrence data input for ", Species_list[i]))
       }
-    d1 <- Occurrence_data[Occurrence_data$species == Species_list[i],]
-    test <- GapAnalysis::ParamTest(d1, sdm)
-    if(isTRUE(test[1])){
-       stop(paste0("No Occurrence data exists, but and SDM was provide. Please check your occurrence data input for ", Species_list[i]))
-  }
 
-  };rm(j)
+    #};rm(j)
 
     if(isFALSE(test[2])){
       df$species[i] <- as.character(Species_list[i])
@@ -147,70 +142,70 @@ ERSin <- function(Species_list,Occurrence_data,Raster_list,Pro_areas=NULL,Ecoreg
       warning(paste0("Either no occurrence data or SDM was found for species ", as.character(Species_list[i]),
                      " the conservation metric was automatically assigned 0"))
     }else{
-    # mask protected areas to threshold
-    Pro_areas1 <- raster::crop(x = Pro_areas, y=sdm)
-    if(raster::res(Pro_areas1)[1] != raster::res(sdm)[1]){
-      Pro_areas1 <- raster::resample(x = Pro_areas1, y = sdm)
-    }
-    sdm[sdm[] != 1] <- NA
-    Pro_areas1 <- sdm * Pro_areas1
+      # mask protected areas to threshold
+      Pro_areas1 <- raster::crop(x = Pro_areas, y=sdm)
+      if(raster::res(Pro_areas1)[1] != raster::res(sdm)[1]){
+        Pro_areas1 <- raster::resample(x = Pro_areas1, y = sdm)
+      }
+      sdm[sdm[] != 1] <- NA
+      Pro_areas1 <- sdm * Pro_areas1
 
-    #convert protect area to points
-    protectPoints <- sp::SpatialPoints(raster::rasterToPoints(Pro_areas1))
-    # extract the Ecoregions_shp values to the points
-    suppressWarnings(raster::crs(protectPoints) <- raster::crs(Ecoregions_shp))
-    suppressWarnings(ecoValsPro <- sp::over(x = protectPoints, y = Ecoregions_shp))
-    ecoValsPro <- data.frame(ECO_ID_U=(unique(ecoValsPro$ECO_ID_U)))
-    ecoValsPro <- ecoValsPro[which(!is.na(ecoValsPro) & ecoValsPro>0),]
-    ecoInProt <- length(ecoValsPro)
+      #convert protect area to points
+      protectPoints <- sp::SpatialPoints(raster::rasterToPoints(Pro_areas1))
+      # extract the Ecoregions_shp values to the points
+      suppressWarnings(raster::crs(protectPoints) <- raster::crs(Ecoregions_shp))
+      suppressWarnings(ecoValsPro <- sp::over(x = protectPoints, y = Ecoregions_shp))
+      ecoValsPro <- data.frame(ECO_ID_U=(unique(ecoValsPro$ECO_ID_U)))
+      ecoValsPro <- ecoValsPro[which(!is.na(ecoValsPro) & ecoValsPro>0),]
+      ecoInProt <- length(ecoValsPro)
 
-    # extract ecoregions values present in predicted presence area
-    predictedPresence <- sp::SpatialPoints(raster::rasterToPoints(sdm))
-    raster::crs(predictedPresence) <- raster::crs(Ecoregions_shp)
-    suppressWarnings( ecoVal <- sp::over(x = predictedPresence, y = Ecoregions_shp))
-    ecoVal <- data.frame(ECO_ID_U=(unique(ecoVal$ECO_ID_U)))
-    ecoVal <- ecoVal[which(!is.na(ecoVal) & ecoVal>0),]
-    # number of Ecoregions_shpions in modeling area
-    ecoInSDM <- length(ecoVal)
+      # extract ecoregions values present in predicted presence area
+      predictedPresence <- sp::SpatialPoints(raster::rasterToPoints(sdm))
+      raster::crs(predictedPresence) <- raster::crs(Ecoregions_shp)
+      suppressWarnings( ecoVal <- sp::over(x = predictedPresence, y = Ecoregions_shp))
+      ecoVal <- data.frame(ECO_ID_U=(unique(ecoVal$ECO_ID_U)))
+      ecoVal <- ecoVal[which(!is.na(ecoVal) & ecoVal>0),]
+      # number of Ecoregions_shpions in modeling area
+      ecoInSDM <- length(ecoVal)
 
-    #clause for 9 in protected area
-    if(ecoInProt == 0){
-      df$species[i] <- as.character(Species_list[i])
-      df$ERSin[i] <- 0
-    }else{
-      # calculate ERSin
-      ERSin <- min(c(100, (ecoInProt/ecoInSDM)*100))
-      df$species[i] <- as.character(Species_list[i])
-      df$ERSin[i] <- ERSin
-    }
-    if(isTRUE(Gap_Map)){
-      message(paste0("Calculating ERSin gap map for ",as.character(Species_list[i])),"\n")
+      #clause for 9 in protected area
+      if(ecoInProt == 0){
+        df$species[i] <- as.character(Species_list[i])
+        df$ERSin[i] <- 0
+      }else{
+        # calculate ERSin
+        ERSin <- min(c(100, (ecoInProt/ecoInSDM)*100))
+        df$species[i] <- as.character(Species_list[i])
+        df$ERSin[i] <- ERSin
+      }
+      if(isTRUE(Gap_Map)){
+        message(paste0("Calculating ERSin gap map for ",as.character(Species_list[i])),"\n")
 
-      # ERSin Gap Map
-      # select all ecoregions present in ecoVal (all points) but absent in ecoValG (g buffers)
-      ecoGap <- ecoVal[!ecoVal %in% ecoValsPro]
-      if(length(ecoGap) == 0){
-        r1 <- raster::raster()
-        raster::extent(r1) <- raster::extent(sdm)
-        raster::values(r1) <- NA
-        GapMapIn_list[[i]] <- r1
+        # ERSin Gap Map
+        # select all ecoregions present in ecoVal (all points) but absent in ecoValG (g buffers)
+        ecoGap <- ecoVal[!ecoVal %in% ecoValsPro]
+        if(length(ecoGap) == 0){
+          r1 <- raster::raster()
+          raster::extent(r1) <- raster::extent(sdm)
+          raster::values(r1) <- NA
+          GapMapIn_list[[i]] <- r1
         }else{
-        SdmMask <-  sdm
-        SdmMask[which(SdmMask[]!=1)] <- NA
-        # pull selected ecoregions and mask to presence area of the model
-        eco2 <- Ecoregions_shp[Ecoregions_shp$ECO_ID_U %in% ecoGap,]
-        #convert to sf object for conversion using fasterize
-        eco2a <- sf::st_as_sf(eco2, SdmMask)
-        # generate a ecoregion raster keeping the unique id.
-        eco3 <- fasterize::fasterize(eco2a, SdmMask, field = "ECO_ID_U")
-        # mask so only locations within the predicted presence area is included.
-        gap_map <- eco3 * SdmMask
-        GapMapIn_list[[i]] <- gap_map
-        names(GapMapIn_list[[i]] ) <- Species_list[[i]]
+          SdmMask <-  sdm
+          SdmMask[which(SdmMask[]!=1)] <- NA
+          # pull selected ecoregions and mask to presence area of the model
+          eco2 <- Ecoregions_shp[Ecoregions_shp$ECO_ID_U %in% ecoGap,]
+          #convert to sf object for conversion using fasterize
+          eco2a <- sf::st_as_sf(eco2, SdmMask)
+          # generate a ecoregion raster keeping the unique id.
+          eco3 <- fasterize::fasterize(eco2a, SdmMask, field = "ECO_ID_U")
+          # mask so only locations within the predicted presence area is included.
+          gap_map <- eco3 * SdmMask
+          GapMapIn_list[[i]] <- gap_map
+          names(GapMapIn_list[[i]] ) <- Species_list[[i]]
+        }
       }
     }
   }
-}
   if(isTRUE(Gap_Map)){
     df <- list(ERSin=df, gap_maps = GapMapIn_list )
   }else{

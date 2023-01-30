@@ -47,7 +47,8 @@
 
 
 
-GRSex <- function(Species_list, Occurrence_data, Raster_list, Buffer_distance=50000, Gap_Map=FALSE) {
+GRSex <- function(Species_list, Occurrence_data, Raster_list,
+                  Buffer_distance=50000, Gap_Map=FALSE) {
 
   longitude <- NULL
   taxon <- NULL
@@ -61,7 +62,7 @@ GRSex <- function(Species_list, Occurrence_data, Raster_list, Buffer_distance=50
     stop("Please add a valid data frame with columns: species, latitude, longitude, type")
   }
 
-  if(isFALSE(identical(names(Occurrence_data),par_names))){
+  if(isFALSE(identical(names(Occurrence_data[,1:4]),par_names))){
     stop("Please format the column names in your dataframe as species, latitude, longitude, type")
   }
 
@@ -89,91 +90,103 @@ GRSex <- function(Species_list, Occurrence_data, Raster_list, Buffer_distance=50
     GapMapEx_list <- list()
   }
 
-  for(i in seq_len(length(sort(Species_list)))){
+  for(i in seq_len(length(Species_list))){
 
-    # select species G occurrences
-    OccData  <- Occurrence_data[which(Occurrence_data$species==Species_list[i]),]
-    OccData  <- OccData [which(OccData$type == "G" & !is.na(OccData$latitude) & !is.na(OccData$longitude)),]
-    OccData  <- OccData [,c("longitude","latitude")]
+    speciesOcc <- Occurrence_data[which(Occurrence_data$species==Species_list[i]),]
 
-
-    # select raster with species name
-    for(j in seq_len(length(Raster_list))){
-      if(grepl(j, i, ignore.case = TRUE)){
-        sdm <- Raster_list[[j]]
-      }
-
-      d1 <- Occurrence_data[Occurrence_data$species == Species_list[i],]
-      test <- GapAnalysis::ParamTest(d1, sdm)
-      if(isTRUE(test[1])){
-        stop(paste0("No Occurrence data exists, but and SDM was provide. Please check your occurrence data input for ", Species_list[i]))
-      }
-
-    };rm(j)
-
-    if(isFALSE(test[2])){
-      df$species[i] <- as.character(Species_list[i])
+    # EBB: catching exception where no G points !
+    if(nrow(speciesOcc[which(speciesOcc$type == "G"),]) == 0){
+      df$species[i] <- Species_list[i]
       df$GRSex[i] <- 0
-      warning(paste0("Either no occurrence data or SDM was found for species ", as.character(Species_list[i]),
-                     " the conservation metric was automatically assigned 0"))
-    } else {
+#      print(paste0("No G points for ",Species_list[[i]]))
+    }else{
 
-      #
-      # sp::coordinates(OccData ) <- ~longitude+latitude
+      # select species G occurrences
+      OccDataG <- speciesOcc
+      OccDataG <- speciesOcc[which(speciesOcc$type=="G"),c("longitude","latitude")]
+      OccDataG <- OccDataG[which(!is.na(OccDataG$latitude) & !is.na(OccDataG$longitude)),]
 
-      #Checking raster projection and assuming it for the occurrences dataframe shapefile
-      if(is.na(raster::crs(sdm))){
-        warning("No coordinate system was provided, assuming  +proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0","\n")
-        raster::projection(sdm) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
-      }
-      # suppressWarnings(sp::proj4string(OccData) <- sp::CRS(raster::projection(sdm)))
-
+      # EBB: just selecting the raster in order, instead of by species name;
+      # was getting an error I didn't understand
+      sdm <- Raster_list[[i]]
       # select raster with species name
+      #for(j in seq_len(length(Raster_list))){
+      #  if(grepl(j, i, ignore.case = TRUE)){
+      #    sdm <- Raster_list[[j]]
+      #  }
 
-      # convert SDM from binary to 1-NA for mask and area
-      sdmMask <- sdm
-      sdmMask[sdmMask[] != 1] <- NA #USING THIS TO AVOID PROBLEMS WITH NA FLOATING VALUES AS -9999 OR 3E8-178
-      # buffer G points
-      buffer <- GapAnalysis::Gbuffer(xy = OccData ,
-                                     dist_m = Buffer_distance,
-                                     output = 'sf')
-      # rasterizing and making it into a mask
-      buffer_rs <- fasterize::fasterize(buffer, sdm)
-      buffer_rs[!is.na(buffer_rs[])] <- 1
-      buffer_rs <- buffer_rs * sdmMask
-      # calculate area of buffer
-      cell_size<-raster::area(buffer_rs, na.rm=TRUE, weights=FALSE)
-      cell_size<-cell_size[!is.na(cell_size)]
-      gBufferRas_area<-length(cell_size)*median(cell_size)
+        d1 <- Occurrence_data[Occurrence_data$species == Species_list[i],]
+        test <- GapAnalysis::ParamTest(d1, sdm)
+        if(isTRUE(test[1])){
+          stop(paste0("No Occurrence data exists, but and SDM was provide. Please check your occurrence data input for ", Species_list[i]))
+        }
 
-      # calculate area of the threshold model
-      cell_size<- raster::area(sdmMask, na.rm=TRUE, weights=FALSE)
-      cell_size<- cell_size[!is.na(cell_size)]
-      pa_spp_area <- length(cell_size)*median(cell_size)
-      # calculate GRSex
-      GRSex <- min(c(100, gBufferRas_area/pa_spp_area*100))
+      #};rm(j)
 
-      df$species[i] <- as.character(Species_list[i])
-      df$GRSex[i] <- GRSex
+      if(isFALSE(test[2])){
+        df$species[i] <- as.character(Species_list[i])
+        df$GRSex[i] <- 0
+        warning(paste0("Either no occurrence data or SDM was found for species ", as.character(Species_list[i]),
+                       " the conservation metric was automatically assigned 0"))
+      } else {
 
-      #GRSex gap map
+        #
+        # sp::coordinates(OccData ) <- ~longitude+latitude
 
-      if(isTRUE(Gap_Map)){
-        message(paste0("Calculating GRSex gap map for ",as.character(Species_list[i])),"\n")
-        bf2 <- buffer_rs
-        bf2[is.na(bf2),] <- 0
-        gap_map <- sdmMask - bf2
-        gap_map[gap_map[] != 1] <- NA
-        GapMapEx_list[[i]] <- gap_map
-        names(GapMapEx_list[[i]] ) <- Species_list[[i]]
+        #Checking raster projection and assuming it for the occurrences dataframe shapefile
+        if(is.na(raster::crs(sdm))){
+          warning("No coordinate system was provided, assuming  +proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0","\n")
+          raster::projection(sdm) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+        }
+        # suppressWarnings(sp::proj4string(OccData) <- sp::CRS(raster::projection(sdm)))
+
+        # select raster with species name
+
+        # convert SDM from binary to 1-NA for mask and area
+        sdmMask <- sdm
+        sdmMask[sdmMask[] != 1] <- NA #USING THIS TO AVOID PROBLEMS WITH NA FLOATING VALUES AS -9999 OR 3E8-178
+        # buffer G points
+        buffer <- GapAnalysis::Gbuffer(xy = OccDataG,
+                                       dist_m = Buffer_distance,
+                                       output = 'sf')
+        # rasterizing and making it into a mask
+        buffer_rs <- fasterize::fasterize(buffer, sdm)
+        buffer_rs[!is.na(buffer_rs[])] <- 1
+        buffer_rs <- buffer_rs * sdmMask
+        # calculate area of buffer
+        cell_size<-raster::area(buffer_rs, na.rm=TRUE, weights=FALSE)
+        cell_size<-cell_size[!is.na(cell_size)]
+        gBufferRas_area<-length(cell_size)*median(cell_size)
+
+        # calculate area of the threshold model
+        cell_size <- raster::area(sdmMask, na.rm=TRUE, weights=FALSE)
+        cell_size <- cell_size[!is.na(cell_size)]
+        pa_spp_area <- length(cell_size)*median(cell_size)
+        # calculate GRSex
+        GRSex <- min(c(100, gBufferRas_area/pa_spp_area*100))
+
+        df$species[i] <- as.character(Species_list[i])
+        df$GRSex[i] <- GRSex
+
+        #GRSex gap map
+
+        if(isTRUE(Gap_Map)){
+          message(paste0("Calculating GRSex gap map for ",as.character(Species_list[i])),"\n")
+          bf2 <- buffer_rs
+          bf2[is.na(bf2),] <- 0
+          gap_map <- sdmMask - bf2
+          gap_map[gap_map[] != 1] <- NA
+          GapMapEx_list[[i]] <- gap_map
+          names(GapMapEx_list[[i]] ) <- Species_list[[i]]
+        }
       }
     }
+#    print(paste0("Completed GRSex analysis for ", Species_list[[i]]))
   }
     if(isTRUE(Gap_Map)){
-      df <- list(GRSex= df,gap_maps=GapMapEx_list)
+      df <- list(GRSex=df,gap_maps=GapMapEx_list)
     } else {
       df <- df
     }
-
   return(df)
 }
