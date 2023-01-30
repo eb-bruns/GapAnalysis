@@ -3,7 +3,7 @@
 # (dcarver1): CWR-of-the-USA-Gap-Analysis
 
 # an alternate or additional way to create an estimated species distribution
-# (non-predictive!) in raster form, is to place buffers around the taxon's 
+# (non-predictive!) in raster form, is to place buffers around the taxon's
 # wild distribution points then rasterize that layer. here we do that!...
 
 ################################################################################
@@ -24,14 +24,13 @@ source("/Users/emily/Documents/GitHub/SDBG_CWR-trees-gap-analysis/0-set_working_
 # set up additional file paths
 path.pts <- file.path(main_dir,occ_dir,"standardized_occurrence_data","taxon_edited_points")
 path.rastbuff <- file.path(main_dir,"rasterized_buffers")
-  
+
 ################################################################################
 # Load functions
 ################################################################################
 
 # source function for filtering occurrence points based on specific flags
-source("/Users/emily/Documents/GitHub/SDBG_CWR-trees-gap-analysis/filter_points.R")
-
+source(file.path(gap_dir,"filter_points.R"))
 
 # function to create aggregated buffers around occ points, then rasterizing;
 # this can be used instead of a species distribution model (SDM)
@@ -62,20 +61,20 @@ rasterized.buffer <- function(df,radius,pt_proj,buff_proj,boundary,
 ################################################################################
 
 
-### Protected areas raster 
+### Protected areas raster
 # **we use this as a template when creating rasterized buffers
 # read in PA file downloaded from Dataverse (https://dataverse.harvard.edu/dataverse/GapAnalysis)
 protected_areas <- raster(file.path(main_dir,gis_dir,"wdpa_reclass.tif"))
 
 
-### Ecoregions shapefile 
+### Ecoregions shapefile
 # **we use this as a boundary to clip the buffers to land
 ## global ecoregions (TNC terrestrial ecoregions)
 eco_global <- vect(file.path(main_dir,gis_dir,
                                     "terr-ecoregions-TNC/tnc_terr_ecoregions.shp"))
 # crop to target regions, to make a little smaller
 unique(eco_global$WWF_REALM2)
-eco_global <- eco_global[eco_global$WWF_REALM2 == "Nearctic" | 
+eco_global <- eco_global[eco_global$WWF_REALM2 == "Nearctic" |
                          eco_global$WWF_REALM2 == "Neotropic",]
 eco_global <- project(eco_global, "epsg:4326")
 ## north america ecoregions (EPA level 1, includes CA and MX)
@@ -86,7 +85,7 @@ eco_na <- vect(file.path(main_dir,gis_dir,
 # keep just water (great lakes)
 eco_water <- eco_na[eco_na$NA_L1NAME == "WATER"]
 eco_water <- project(eco_water, "epsg:4326")
-## now clip out great lakes from global ecoregions and create aggregated 
+## now clip out great lakes from global ecoregions and create aggregated
 # version for clipping buffers
 eco_global <- erase(eco_global,eco_water)
 boundary.poly <- aggregate(eco_global, dissolve = TRUE)
@@ -102,7 +101,7 @@ rm(eco_global,eco_na,eco_water)
 occ_files <- list.files(path.pts, pattern = ".csv", full.names = T)
 occ_dfs <- lapply(occ_files, read.csv)
 all_occ <- Reduce(rbind, occ_dfs); rm(occ_files,occ_dfs)
-# read in file with manual edits to occurrence data (flagging additional 
+# read in file with manual edits to occurrence data (flagging additional
 # bad points, etc)
 manual_pt_edits <- read.csv(
   file.path(main_dir, taxa_dir, "manual_point_edits.csv"),
@@ -123,7 +122,7 @@ pt.proj <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
 taxa <- sort(unique(all_occ$taxon_name_accepted))
 
 
-### Create rastertized buffers around occurrence points, to use as 
+### Create rastertized buffers around occurrence points, to use as
 # species distribution layer in analyses
 # can test at multiple buffer sizes (eg 20km, 50km, 100km -- change as desired)
 buffer_sizes <- c(20000,50000,100000)

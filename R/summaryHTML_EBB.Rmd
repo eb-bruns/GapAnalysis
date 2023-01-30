@@ -388,9 +388,19 @@ Contact data@bgci.org to request ex situ accessions data with all fields, includ
 
 ### Map of ex situ geographical representativeness (GRS ex situ)
 
-Taxon's potential distribution, occurrence points surrounded by 50km buffers (estimated distribution), and germplasm collection points surrounded by 50km buffers (potential distribution conserved ex situ). Use the layers icon on the left side of the map to change the basemap and toggle layers on/off. Click each point for more information.
+Taxon's modeled distribution (potential distribution), occurrence points surrounded by 50km buffers (estimated distribution), and germplasm collection points surrounded by 50km buffers (potential distribution conserved ex situ). Use the layers icon on the left side of the map to change the basemap and toggle layers on/off.
 
 ```{r Map-GRSex, echo=FALSE, message=FALSE, warning=FALSE}
+### if more than 5,000 coordinates, thin points for mapping so it's not so huge
+### n = num points in cell
+  ## could do this for all taxa, if desired
+if(nrow(Od) > 5000){
+  #print("more than 5,000 coordinates; thinning")
+  t <- gridSample(Od[,c("latitude","longitude")], Pro_areas, n=1,
+                  chess='white'); t$flag = "keep"
+  t2 <- full_join(Od,t)
+  Od <- t2 %>% filter(flag=="keep") %>% select(-flag); rm(t,t2)
+}
 
 ## create vector layer of buffers around points 
 buff <- create.buffers(Od,50000,pt.proj,pt.proj,boundary,"latitude","longitude")
@@ -482,7 +492,7 @@ r2[r2==0]<-NA
 
 ### Map of ex situ ecological representativeness (ERS ex situ)
 
-Taxon's potential distribution, with ecoregions highlighted where no ex situ conservation germplasm has been collected. Toggle on the occurrence point layer using the layers icon on the left side of the map.
+Taxon's modeled potential distribution, with ecoregions highlighted where no ex situ conservation germplasm has been collected. Toggle on the occurrence point layer using the layers icon on the left side of the map.
 
 ```{r Map-ERSex, echo=FALSE, message=FALSE, warning=FALSE, out.width = '100%'}
 
@@ -674,7 +684,7 @@ suppressWarnings(map2)
 
 ### Map of in situ geographical representativeness (GRS in situ)
 
-Taxon's potential distribution, with distribution occurring within existing protected areas highlighted. Toggle on the occurrence point layer using the layers icon on the left side of the map.
+Taxon's modeled potential distribution, with distribution occurring within existing protected areas highlighted. Toggle on the occurrence point layer using the layers icon on the left side of the map.
 
 ```{r Map-GRSin, echo=FALSE, message=FALSE, warning=FALSE, out.width = '100%'}
 #r1 <- Rl[[1]]
@@ -700,7 +710,7 @@ suppressWarnings(map3)
 
 ### Map of in situ ecological representativeness (ERS in situ)
 
-Taxon's potential distribution, with ecoregions highlighted where no protected areas are present. Toggle on the occurrence point layer using the layers icon on the left side of the map.
+Taxon's modeled potential distribution, with ecoregions highlighted where no protected areas are present. Toggle on the occurrence point layer using the layers icon on the left side of the map.
 
 ```{r Map-ERSin, echo=FALSE, message=FALSE, warning=FALSE, out.width = '100%'}
 

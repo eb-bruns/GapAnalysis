@@ -70,7 +70,7 @@ FCSc_mean <- function(FCSex_df, FCSin_df) {
     FCSin_df  <- FCSin_df
   }
   #join datasets and select necessary Columns
-  df <- merge(FCSex_df, FCSin_df, by ="Taxon",all.x=TRUE)
+  df <- full_join(FCSex_df, FCSin_df, by ="Taxon")#,all.x=TRUE
   #df <- dplyr::left_join(x = FCSex_df, y = FCSin_df, by = "species")
   df <-  df[,c("Taxon", "FCSex","FCSex_class", "FCSin", "FCSin_class")]
 

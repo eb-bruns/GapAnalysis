@@ -1,0 +1,6 @@
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Mon Jan 30 10:09:33 2023
+
+Thinning Parameter Used (in km): 1
+Number of replicates of thinning script: 0

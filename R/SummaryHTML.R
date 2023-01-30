@@ -81,7 +81,7 @@ SummaryHTML <- function(Species_list, Occurrence_data, Raster_list,
       for(i in 1:length(Species_list)){
         Sl <- Species_list[i]
         Od <- Occurrence_data[Occurrence_data$species == Species_list[i], ]
-        #EBB: adding
+        # EBB: adding raw data b/c my workflow has that separate from vetted coords
         OdR <- Occurrence_data_raw[Occurrence_data_raw$species == Species_list[i], ]
         #Checking if user is using a raster list or a raster stack
         #if (isTRUE("RasterStack" %in% class(Raster_list))) {
@@ -95,7 +95,7 @@ SummaryHTML <- function(Species_list, Occurrence_data, Raster_list,
         #EBB: changing path to my version
         rmarkdown::render(
           #input = paste0(out_dir,"/data/","preloaded_data","/","summaryHTML.Rmd"),
-          input = paste0("/Users/emily/Documents/GitHub/SDBG_CWR-trees-gap-analysis/helpers/summaryHTML_EBB.Rmd"),
+          input = file.path(gap_dir,"summaryHTML_EBB.Rmd"),
           output_dir = Output_Folder,
           output_file  = paste0(as.character(Species_list[i]),"_SummaryReport.html")
         )
