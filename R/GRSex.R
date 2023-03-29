@@ -153,6 +153,7 @@ GRSex <- function(Species_list, Occurrence_data, Raster_list,
         buffer_rs <- fasterize::fasterize(buffer, sdm)
         buffer_rs[!is.na(buffer_rs[])] <- 1
         buffer_rs <- buffer_rs * sdmMask
+
         # calculate area of buffer
         cell_size<-raster::area(buffer_rs, na.rm=TRUE, weights=FALSE)
         cell_size<-cell_size[!is.na(cell_size)]
@@ -162,8 +163,15 @@ GRSex <- function(Species_list, Occurrence_data, Raster_list,
         cell_size <- raster::area(sdmMask, na.rm=TRUE, weights=FALSE)
         cell_size <- cell_size[!is.na(cell_size)]
         pa_spp_area <- length(cell_size)*median(cell_size)
+
         # calculate GRSex
-        GRSex <- min(c(100, gBufferRas_area/pa_spp_area*100))
+          #EBB: this is to catch when the ex situ buffer is totally outside the SDM,
+          #   which makes the buffer_rs empty (all NAs)
+        if(length(unique(values(buffer_rs)))==1){ # if only NAs
+          GRSex <- 0
+        } else {
+          GRSex <- min(c(100, gBufferRas_area/pa_spp_area*100))
+        }
 
         df$species[i] <- as.character(Species_list[i])
         df$GRSex[i] <- GRSex
