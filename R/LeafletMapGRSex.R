@@ -27,13 +27,13 @@ create.full.map <- function(spp.sdm,spp.pts.buffer,spp.pts,
     map <- leaflet(width = "100%") %>%
     # Base layer groups
       addProviderTiles(providers$Esri.WorldGrayCanvas,group = "Esri.WorldGrayCanvas",
-                       options = providerTileOptions(maxZoom = 11)) %>%
+                       options = providerTileOptions(maxZoom = 10)) %>%
       addProviderTiles(providers$OpenStreetMap,group = "OpenStreetMap",
-                       options = providerTileOptions(maxZoom = 11)) %>%
+                       options = providerTileOptions(maxZoom = 10)) %>%
       addProviderTiles(providers$Esri.WorldTopoMap,group = "Esri.WorldTopoMap",
-                       options = providerTileOptions(maxZoom = 11)) %>%
+                       options = providerTileOptions(maxZoom = 10)) %>%
       addProviderTiles(providers$CartoDB.Positron,group = "CartoDB.Positron",
-                       options = providerTileOptions(maxZoom = 11)) %>%
+                       options = providerTileOptions(maxZoom = 10)) %>%
       ### Overlay groups (can toggle)
       addRasterImage(spp.sdm, colors=sdm.pal, opacity = 0.8,
                  group = "Potential distribution") %>%
@@ -124,13 +124,13 @@ create.noex.map <- function(spp.sdm,spp.pts.buffer,spp.pts){
   map <- leaflet(width = "100%") %>%
     # Base layer groups
     addProviderTiles(providers$Esri.WorldGrayCanvas,group = "Esri.WorldGrayCanvas",
-                     options = providerTileOptions(maxZoom = 11)) %>%
+                     options = providerTileOptions(maxZoom = 10)) %>%
     addProviderTiles(providers$OpenStreetMap,group = "OpenStreetMap",
-                     options = providerTileOptions(maxZoom = 11)) %>%
+                     options = providerTileOptions(maxZoom = 10)) %>%
     addProviderTiles(providers$Esri.WorldTopoMap,group = "Esri.WorldTopoMap",
-                     options = providerTileOptions(maxZoom = 11)) %>%
+                     options = providerTileOptions(maxZoom = 10)) %>%
     addProviderTiles(providers$CartoDB.Positron,group = "CartoDB.Positron",
-                     options = providerTileOptions(maxZoom = 11)) %>%
+                     options = providerTileOptions(maxZoom = 10)) %>%
     ### Overlay groups (can toggle)
     addRasterImage(spp.sdm, colors=sdm.pal, opacity = 0.8,
                    group = "Potential distribution") %>%
@@ -196,13 +196,13 @@ create.noex.nosdm.map <- function(eco_clip,spp.pts.buffer,spp.pts,pro_areas){
   map <- leaflet(width = "100%") %>%
     # Base layer groups
     addProviderTiles(providers$Esri.WorldGrayCanvas,group = "Esri.WorldGrayCanvas",
-                     options = providerTileOptions(maxZoom = 11)) %>%
+                     options = providerTileOptions(maxZoom = 10)) %>%
     addProviderTiles(providers$OpenStreetMap,group = "OpenStreetMap",
-                     options = providerTileOptions(maxZoom = 11)) %>%
+                     options = providerTileOptions(maxZoom = 10)) %>%
     addProviderTiles(providers$Esri.WorldTopoMap,group = "Esri.WorldTopoMap",
-                     options = providerTileOptions(maxZoom = 11)) %>%
+                     options = providerTileOptions(maxZoom = 10)) %>%
     addProviderTiles(providers$CartoDB.Positron,group = "CartoDB.Positron",
-                     options = providerTileOptions(maxZoom = 11)) %>%
+                     options = providerTileOptions(maxZoom = 10)) %>%
     ### Overlay groups (can toggle)
     # In situ buffers
     addPolygons(data = spp.pts.buffer,
@@ -267,13 +267,13 @@ create.nosdm.map <- function(eco_clip,spp.pts.buffer,spp.pts,ex.pts.buffer,
   map <- leaflet(width = "100%") %>%
       # Base layer groups
     addProviderTiles(providers$Esri.WorldGrayCanvas,group = "Esri.WorldGrayCanvas",
-                     options = providerTileOptions(maxZoom = 11)) %>%
+                     options = providerTileOptions(maxZoom = 10)) %>%
     addProviderTiles(providers$OpenStreetMap,group = "OpenStreetMap",
-                     options = providerTileOptions(maxZoom = 11)) %>%
+                     options = providerTileOptions(maxZoom = 10)) %>%
     addProviderTiles(providers$Esri.WorldTopoMap,group = "Esri.WorldTopoMap",
-                     options = providerTileOptions(maxZoom = 11)) %>%
+                     options = providerTileOptions(maxZoom = 10)) %>%
     addProviderTiles(providers$CartoDB.Positron,group = "CartoDB.Positron",
-                     options = providerTileOptions(maxZoom = 11)) %>%
+                     options = providerTileOptions(maxZoom = 10)) %>%
     ### Overlay groups (can toggle)
     # In situ buffers
     addPolygons(data = spp.pts.buffer,
