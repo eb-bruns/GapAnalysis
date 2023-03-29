@@ -138,7 +138,7 @@ FCSin <- function(Species_list, Occurrence_data, Raster_list,
   #EBB: source edits...
   #source("/Users/emily/Documents/GitHub/GapAnalysis/R/ERSin.R")
   ERSin_df <- ERSin(Species_list = Species_list,
-                    Occurrence_data =Occurrence_data,
+                    Occurrence_data = Occurrence_data,
                     Raster_list = Raster_list,
                     Pro_areas=Pro_areas,
                     Ecoregions_shp=Ecoregions_shp,
@@ -156,7 +156,7 @@ FCSin <- function(Species_list, Occurrence_data, Raster_list,
 
   }
     # calculate the mean value for each row to determine fcs per species
-  FCSin_df$FCSin <- rowMeans(FCSin_df[, c("SRSin", "GRSin", "GRSin")])
+  FCSin_df$FCSin <- rowMeans(FCSin_df[, c("SRSin", "GRSin", "ERSin")])
 
 
 
