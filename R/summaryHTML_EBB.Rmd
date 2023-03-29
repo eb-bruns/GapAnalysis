@@ -104,7 +104,7 @@ ecoPal <- c("#7852A9FF","#E93FBCFF","#B33941FF","#1175BBFF","#DBA520FF",
 ptsPal <- c("#3a3a3b","#89e81c")
 proPal <- "#45B320" # same color as val 2 in gBufPal
 #srsinPal <- c("#edd2c2", "#b31b07") # pink to red
-srsinPal <- brewer.pal(name="Reds",n=9)[2:9] #omit the first color b/c v light
+srsinPal <- brewer.pal(name="Reds",n=9)[3:9] #omit first 2 colors bc very light
 
 
 ```
@@ -213,42 +213,73 @@ kableExtra::kable_styling(kable_input = t1, bootstrap_options = "striped",
 ```{r Occurrence-download, echo=FALSE, message=FALSE, warning=FALSE}
 
 ## raw occurrence data
-t10 <- OdR %>% 
-  dplyr::filter(type=="H") %>%
-  select(taxon_name,database,latitude,longitude,basisOfRecord,year,
-         establishmentMeans,individualCount,coordinateUncertaintyInMeters,
-         datasetName,references,UID) %>%
-  mutate(database = recode(database,"SEINet" = "NorthAm_herbaria"))
-
-t10.nm <- paste0("RefRecords_Jan2023_NAFruitNutCWR-",Sl)
-
-t10 %>% download_this(
-  output_name = t10.nm,
-  output_extension = ".xlsx",
-  button_label = "Download RefRecords (raw data)",
-  button_type = "default",
-  has_icon = TRUE,
-  icon = "fa fa-save",
-  class = "button_small")
+  t10 <- OdR %>% 
+    dplyr::filter(type=="H") %>%
+    select(taxon_name,database,latitude,longitude,basisOfRecord,year,
+           establishmentMeans,individualCount,coordinateUncertaintyInMeters,
+           datasetName,references,UID) %>%
+    mutate(database = recode(database,"SEINet" = "NorthAm_herbaria"))
+  
+  t10.nm <- paste0("RefRecords_Jan2023_NAFruitNutCWR-",Sl)
 
 ## mapped occurrence data
-t11 <- Od %>% 
-  dplyr::filter(type=="H") %>%
-  select(taxon_name,database,latitude,longitude,basisOfRecord,year,
-         establishmentMeans,individualCount,coordinateUncertaintyInMeters,
-         datasetName,references,UID) %>%
-  mutate(database = recode(database,"SEINet" = "NorthAm_herbaria"))
+  t11 <- Od %>% 
+    dplyr::filter(type=="H") %>%
+    select(taxon_name,database,latitude,longitude,basisOfRecord,year,
+           establishmentMeans,individualCount,coordinateUncertaintyInMeters,
+           datasetName,references,UID) %>%
+    mutate(database = recode(database,"SEINet" = "NorthAm_herbaria"))
+  
+  t11.nm <- paste0("RefCoordsMapped_Jan2023_NAFruitNutCWR-",Sl)
 
-t11.nm <- paste0("RefCoordsMapped_Jan2023_NAFruitNutCWR-",Sl)
+# add exception for a few taxa with too many occurrence points to embed the
+#   buttons in the HTML; we will instead (for now) add links to the Google Drive
+if(Sl=="Carya_ovata"){
+  print.message_noRaw1 <- T
+  print.message_noRaw2 <- F
+  
+  write.csv(t10,file.path(main_dir,occ_dir,
+    "Raw data for specific taxa - !! VERSION LINKED TO PUBLICLY IN CITATIONS !!",
+    paste0(t10.nm,".csv")))
+  
+} else if (Sl == "Prunus_serotina") {
+  print.message_noRaw1 <- F
+  print.message_noRaw2 <- T
+  
+  write.csv(t10,file.path(main_dir,occ_dir,
+    "Raw data for specific taxa - !! VERSION LINKED TO PUBLICLY IN CITATIONS !!",
+    paste0(t10.nm,".csv")))
+  
+  write.csv(t11,file.path(main_dir,occ_dir,
+    "Raw data for specific taxa - !! VERSION LINKED TO PUBLICLY IN CITATIONS !!",
+    paste0(t11.nm,".csv")))
 
-t11 %>% download_this(
-  output_name = t11.nm,
-  output_extension = ".xlsx",
-  button_label = "Download RefCoords (vetted for mapping)",
-  button_type = "default",
-  has_icon = TRUE,
-  icon = "fa fa-save",
-  class = "button_small")
+} else {
+  print.message_noRaw1 <- F
+  print.message_noRaw2 <- F
+  
+  t10 %>% download_this(
+    output_name = t10.nm,
+    output_extension = ".xlsx",
+    button_label = "Download RefRecords (raw data)",
+    button_type = "default",
+    has_icon = TRUE,
+    icon = "fa fa-save",
+    class = "button_small")
+}
+
+# for some reason only one button would show up if they were in the same if statement..
+#  so I'm adding in another statement here
+if(print.message_noRaw2 == F){
+  t11 %>% download_this(
+    output_name = t11.nm,
+    output_extension = ".xlsx",
+    button_label = "Download RefCoords (vetted for mapping)",
+    button_type = "default",
+    has_icon = TRUE,
+    icon = "fa fa-save",
+    class = "button_small")
+}
 
 #DT::datatable(t11,
 #              extensions = 'Buttons',
@@ -265,7 +296,10 @@ t11 %>% download_this(
 #              rownames = FALSE)
 
 ```
-You can also download reference occurrences for all target taxa in one file <a href="https://NorthAmericanFruitNutTreeCWR.github.io/docs/references" target="_blank">here</a>.
+`r if(print.message_noRaw1){'This taxon has too many occurrence points to provide a download button for the RefRecords (raw data); if you would like to download the raw occurrence data for this taxon, it is available <a href="https://drive.google.com/drive/folders/1gLYVA0PKPLy8xjTfj8nw_KCSD3PqztcL?usp=share_link" target="_blank">here</a>.'}`
+`r if(print.message_noRaw2){'This taxon has too many occurrence points to provide a download button for the RefRecords (raw data) or RefCoords (vetted for mapping); if you would like to download these data for this taxon, they are available <a href="https://drive.google.com/drive/folders/1gLYVA0PKPLy8xjTfj8nw_KCSD3PqztcL?usp=share_link" target="_blank">here</a>.'}`
+
+You can also download reference occurrences for all target taxa in one file <a href="https://northamericanfruitnuttreecwr.github.io/pages/references" target="_blank">here</a>.
 
 <br>
 <br>
@@ -352,7 +386,7 @@ DT::datatable(t20, rownames = FALSE, extensions = 'Buttons',
                              #  filename = paste0("exsitu_accessions_2022_NAFruitNutCWR-",Sl))),
                              lengthMenu = list(c(10,20),c('10','20'))))
 
-if(print.message){print("There are no ex situ conservation collections reporting this taxon.")}
+if(print.message){cat("There are no ex situ conservation collections reporting this taxon.")}
 #`r if(print.message){"There are no ex situ conservation collections reporting this taxon."}`
 
 ```
@@ -382,7 +416,7 @@ if(!print.message){
 }
 ```
 
-Contact data@bgci.org to request ex situ accessions data with all fields, including source and wild locality information.
+Contact gardensearch@bgci.org to request additional ex situ accessions data fields.
 
 <br>
 
@@ -390,17 +424,24 @@ Contact data@bgci.org to request ex situ accessions data with all fields, includ
 
 Taxon's modeled distribution (potential distribution), occurrence points surrounded by 50km buffers (estimated distribution), and germplasm collection points surrounded by 50km buffers (potential distribution conserved ex situ). Use the layers icon on the left side of the map to change the basemap and toggle layers on/off.
 
-```{r Map-GRSex, echo=FALSE, message=FALSE, warning=FALSE}
+```{r Thin-occurrence-points, echo=FALSE, message=FALSE, warning=FALSE}
 ### if more than 5,000 coordinates, thin points for mapping so it's not so huge
-### n = num points in cell
+### using function from danlwarren
   ## could do this for all taxa, if desired
 if(nrow(Od) > 5000){
-  #print("more than 5,000 coordinates; thinning")
-  t <- gridSample(Od[,c("latitude","longitude")], Pro_areas, n=1,
-                  chess='white'); t$flag = "keep"
+  t <- gridSample(Od[,c("longitude","latitude")], Pro_areas, n=1,
+                  chess='white'
+                  ); t$flag = "keep"
   t2 <- full_join(Od,t)
-  Od <- t2 %>% filter(flag=="keep") %>% select(-flag); rm(t,t2)
+  Od <- t2 %>% dplyr::filter(flag=="keep") %>% dplyr::select(-flag); rm(t,t2)
+  print.message_occ <- TRUE
+} else {
+  print.message_occ <- FALSE
 }
+```
+`r if(print.message_occ){'Please note that points have been thinned for this taxon, to enable better map functionality. You can download the full dataset using the "Download RefCoords" button above.'}`
+
+```{r Map-GRSex, echo=FALSE, message=FALSE, warning=FALSE}
 
 ## create vector layer of buffers around points 
 buff <- create.buffers(Od,50000,pt.proj,pt.proj,boundary,"latitude","longitude")
@@ -506,7 +547,9 @@ e1 <- Ecoregions_shp[Ecoregions_shp$ECO_ID_U %in% gEco,] #ecoregions present in 
 Od_prep <- Od %>% mutate(type = recode(type, "G" = "zG"))
 Od_shp <- SpatialPointsDataFrame(Od_prep[,c("longitude", "latitude")],
                                  Od_prep[,c("database","type")])
-  
+
+## right now we are only showing a map if there are ecoregions not yet conserved 
+##    ex situ -- this could be removed so that a map shows either way
 if(length(gEco)!=0){ # & !is.na(gEco[1])
   # mask  based on predicted presence area
   r2 <- r1
@@ -518,14 +561,15 @@ if(length(gEco)!=0){ # & !is.na(gEco[1])
   e1 <- fasterize::fasterize(e1, r2, field = "ECO_ID_U") #polygon to raster
   e1 <- e1 * r2 # clip ecoregions to area the species is predicted
 
-  if(length(gEco) > 30){
+  if(length(gEco) > 20){ # if more than 20 ecoregions, they don't all fit on legend
     map1=
       tm_shape(r2, name = "Taxon's potential distribution") +
         tm_raster(palette = ersBPal, style = "cat", 
                   title = "Ecoregions conserved ex situ",
                   labels = c("Taxon's potential distribution")) +
       tm_shape(e1, name = "Ecoregions not conserved ex situ") +
-        tm_raster(palette = ecoPal, style ="pretty", title = "Ecoregions not conserved ex situ") +
+        tm_raster(palette = ecoPal, style ="fisher", n=20,
+                  title = "Ecoregions not conserved ex situ") +
       tm_shape(Od_shp, name = "Occurrence points") + 
         tm_dots("type", palette = ptsPal, border.col = ptsPal[1], popup.vars = FALSE,
                 size = 0.03, title = "Occurrence points", alpha = 0.9,
@@ -549,15 +593,10 @@ if(length(gEco)!=0){ # & !is.na(gEco[1])
   }
   # side-bt-side maps
   #tmap_arrange(map1,map2)
-  print.message3 <- FALSE
+  suppressWarnings(map1)
 } else {
-  print.message3 <- TRUE
-  map1 <- "All ecoregions are conserved ex situ."
+  cat("All ecoregions are conserved ex situ.")
 }
-
-suppressWarnings(map1)
-
-#`r if(print.message3){"All ecoregions are conserved ex situ."}`
 
 ```
 
@@ -718,11 +757,16 @@ g1 <- inERS$gap_maps[[1]]
 gEco <- na.omit(unique(raster::values(g1)))
 g1[g1 == 0] <- NA
 
+## right now we are only showing a map if there are ecoregions not yet conserved 
+##    in situ -- this could be removed so that a map shows either way, but first
+##    the ERSin function must be fixed - right now it throws an error for species
+##    that are fully conserved in situ. See this issue in the original 
+##    GapAnalysis package on GitHub: https://github.com/CIAT-DAPA/GapAnalysis/issues/22
 if(length(gEco)!=0){
-  if(length(gEco)>30){ # if more than 30 ecoregions, tmap could not visualize as categories ('cat' style)
+  if(length(gEco)>20){ # if more than 20 ecoregions, they don't all fit on legend
     map4=
       tm_shape(r2, name = "Taxon's potential distribution")+
-        tm_raster(style = "pretty", palette = ersBPal, 
+        tm_raster(style = "fisher", n=20, palette = ersBPal, 
                   title = "Ecoregions conserved in situ",
                   labels = "Taxon's potential distribution")+
       tm_shape(g1, name = "Ecoregions not conserved in situ")+
@@ -759,13 +803,12 @@ if(length(gEco)!=0){
       map4 <- map4 %>% tmap_leaflet() %>% leaflet::hideGroup("Occurrence points")
     }
   }
-  print.message2 <- FALSE
+  map4
 } else {
-  print.message2 <- TRUE
-  map4 <- "All ecoregions are conserved in situ."
+  cat("All ecoregions are conserved in situ.")
 }
 
-suppressWarnings(map4)
+#suppressWarnings(map4)
 
 #`r if(print.message2){"All ecoregions are conserved in situ."}`
 
@@ -810,7 +853,7 @@ DT::datatable(allEco, rownames = FALSE, #extensions = 'Buttons',
 
 *SOURCEDATA*: The citation of the ecoregion definition.
 
-View map of all TNC global ecoregions <a href="https://geospatial.tnc.org/datasets/7b7fb9d945544d41b3e7a91494c42930_0/explore?location=25.829513%2C-67.148437%2C4.00" target="_blank">here</a>
+View map of all TNC global ecoregions <a href="https://geospatial.tnc.org/datasets/7b7fb9d945544d41b3e7a91494c42930_0/explore?location=25.829513%2C-67.148437%2C4.00" target="_blank">here</a>.
 
 <br>
 <br>
@@ -848,19 +891,19 @@ kableExtra::kable_styling(kable_input = t4, bootstrap_options = "striped",
                           full_width = F, font_size = 16, position = "left")
 
 ```
-A summary figure of all conservation scores for our 95 target taxa can be viewed <a href="https://NorthAmericanFruitNutTreeCWR.github.io/docs/references/summaryfig" target="_blank">here</a> and used to prioritize among taxa.
+A summary figure of all conservation scores for our 95 target taxa can be viewed <a href="https://NorthAmericanFruitNutTreeCWR.github.io/pages/summaryfig" target="_blank">here</a> and used to prioritize among taxa.
 
 <br>
 <br>
 <br>
 <br>
 
-*Additional resources – including data sources, citations, and methods information – can be found <a href="https://NorthAmericanFruitNutTreeCWR.github.io/docs/references" target="_blank">here</a>.*
+*Additional resources – including data sources, citations, and methods information – can be found <a href="https://NorthAmericanFruitNutTreeCWR.github.io/pages/references" target="_blank">here</a>.*
 
 *Recommended citation:*
 Bruns, E.B., Khoury, C.K., McCarry, N., Meyer, A., Mims, R., Warschefsky E., and the North American Fruit and Nut Tree Crop Wild Relatives Working Group. (2023). Distributions and conservation status of North American fruit and nut tree crop wild relatives. Summary of conservation gap analysis for [TAXON NAME]. [URL].
 
-*This work was funded by the United States Botanic Garden. Emily Beckman Bruns was also supported by NSF ABI grant #1759759*
+*This work was funded by the United States Botanic Garden. Emily Beckman Bruns was also supported by NSF ABI grant #1759759. Additional thanks to San Diego Botanic Garden, Botanic Gardens Conservation International - US, The Morton Arboretum, and Missouri Botanical Garden for providing organizational support.*
 
 <br>
 
