@@ -1,16 +1,16 @@
+# priority_score_graph2019_10_3.R
 # H. Achicanoy
 # CIAT, 2019
 
-## Edited by Emily Beckman Bruns January 2023 for gap analysis of
-## North American Fruit & Nut Tree Crop Wild Relatives
-
 #library(tidyverse)
 #library(grid)
-
 #df <- readxl::read_excel("D:/OneDrive - CGIAR/Documents/Publications/CWR_Capsicum/code/Capsicum_summary_2019_10_4.xlsx", sheet = 1)
 #df <- readxl::read_excel("D:/ToBackup/others/characterization_spooner/_data/Lactuca_species_summary_2019-5_8_cleaned.xlsx", sheet = 1)
 #df <- readxl::read_excel("D:/ToBackup/others/characterization_spooner/_data/Cucurbita_species_summary_2019-06-05.xlsx", sheet = 1)
 #df
+
+## Edited by Emily Beckman Bruns January 2023 for gap analysis of
+## North American Fruit & Nut Tree Crop Wild Relatives
 
 SummaryScoresChart <- function(df,out_path){
 
@@ -70,13 +70,18 @@ SummaryScoresChart <- function(df,out_path){
                                       guide  = ggplot2::guide_legend(override.aes = list(size = 8,
                                                                                          shape = 18,
                                                                                          colour = "red")))
+
+  p <- p + ggplot2::coord_cartesian(ylim = c(0, 97), clip = "off") #EBB: make room at top for labels
+
   p <- p + ggplot2::annotate("text",
                              x      = c(12.5, 37.5, 62.5, 87.5),
-                             y      = nrow(df) + 0.1, # 13.7
+                             y      = nrow(df) + 1.9, # 13.7
                              label  = c("Urgent Priority","High Priority","Medium Priority","Low Priority"),
                              colour = "black",
                              size   = 4,
                              fontface = 2)
+
+
   return(p)
 
   #ggsave(out_path, plot = p, device = "png", units = "in", width = 10, height = 12, dpi = 320)
