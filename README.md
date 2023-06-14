@@ -1,4 +1,5 @@
-## My forked version of the GapAnalysis R package, with small changes to fix issues and bigger changes to reformat the summary HTML based on our project
+## My forked version of the GapAnalysis R package, with small changes to fix issues and bigger changes to reformat the summary HTML based on our project; original README below --
+
 
 
 # GapAnalysis R package
