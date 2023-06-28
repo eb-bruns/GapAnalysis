@@ -95,7 +95,7 @@ SummaryHTML <- function(Species_list, Occurrence_data, Raster_list,
         #EBB: changing path to my version
         rmarkdown::render(
           #input = paste0(out_dir,"/data/","preloaded_data","/","summaryHTML.Rmd"),
-          input = file.path(gap_dir,"summaryHTML_EBB.Rmd"),
+          input = file.path(gap_dir,"summaryHTML.Rmd"),
           output_dir = Output_Folder,
           output_file  = paste0(as.character(Species_list[i]),"_SummaryReport.html")
         )
