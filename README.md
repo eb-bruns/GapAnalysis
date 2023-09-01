@@ -1,4 +1,4 @@
-## My forked version of the GapAnalysis R package, with small changes to fix issues and bigger changes to reformat the summary HTML based on our project; original README below --
+## My forked version of the GapAnalysis R package, with small changes to fix issues and bigger changes to reformat the summary HTML based on our project. You can find results at https://NorthAmericanFruitNutTreeCWR.github.io/. Original README below --
 
 
 
